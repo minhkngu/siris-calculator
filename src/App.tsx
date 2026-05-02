@@ -111,19 +111,19 @@ export default function App() {
       // Map StayDiscounts
       const dData = (dRaw || []).map((d: any) => ({
         id: d.id,
-        minNights: d.min_nights || d.minNights || d.minnights || 1,
-        discountAmount: d.discount_amount || d.discountAmount || d.discountamount || 0,
-        isPercentage: d.is_percentage !== undefined ? d.is_percentage : d.isPercentage,
-        name: d.name
-      }));
+        name: d.name,
+        minNights: Number(d.minnights || 0),
+        discountAmount: Number(d.discountamount || 0),
+        isPercentage: d.ispercentage === true || d.ispercentage === 1 || String(d.ispercentage).toLowerCase() === 'true'
+      })).sort((a, b) => b.minNights - a.minNights);
 
       // Map DateAdjustments
       const aData = (aRaw || []).map((a: any) => ({
         id: a.id,
         date: a.date,
         type: a.type,
-        amount: a.amount,
-        isPercentage: a.is_percentage !== undefined ? a.is_percentage : a.isPercentage,
+        amount: Number(a.amount || 0),
+        isPercentage: a.ispercentage === true || a.ispercentage === 1 || String(a.ispercentage).toLowerCase() === 'true' || a.is_percentage === true || a.is_percentage === 1,
         note: a.note
       }));
       
@@ -193,7 +193,7 @@ export default function App() {
       let adjustedPrice = basePrice;
       
       adjustments.forEach(adj => {
-        const value = adj.isPercentage ? (basePrice * adj.amount / 100) : adj.amount;
+        const value = adj.isPercentage ? Math.round(basePrice * adj.amount / 100) : adj.amount;
         if (adj.type === 'surcharge') {
           adjustedPrice += value;
         } else {
@@ -205,7 +205,7 @@ export default function App() {
 
       let vatPerNight = 0;
       if (includeVAT) {
-        vatPerNight = adjustedPrice * (vatRate / 100);
+        vatPerNight = Math.round(adjustedPrice * (vatRate / 100));
       }
 
       return {
@@ -218,17 +218,6 @@ export default function App() {
       };
     });
 
-    let finalTotal = totalBase;
-    const globalValue = globalAdjustment.isPercentage 
-      ? (totalBase * globalAdjustment.amount / 100) 
-      : globalAdjustment.amount;
-
-    if (globalAdjustment.type === 'surcharge') {
-      finalTotal += globalValue;
-    } else {
-      finalTotal -= globalValue;
-    }
-
     // Apply stay discounts
     const nightCount = breakdown.length;
     const applicableStayDiscounts = stayDiscounts
@@ -238,19 +227,32 @@ export default function App() {
     const bestStayDiscount = applicableStayDiscounts[0];
     let stayDiscountValue = 0;
     if (bestStayDiscount) {
+      // Đảm bảo tính toán dựa trên tổng tiền gốc (totalBase) và làm tròn
       stayDiscountValue = bestStayDiscount.isPercentage 
-        ? (finalTotal * bestStayDiscount.discountAmount / 100)
+        ? Math.round(totalBase * bestStayDiscount.discountAmount / 100)
         : bestStayDiscount.discountAmount;
-      finalTotal -= stayDiscountValue;
+    }
+
+    let finalTotal = totalBase - stayDiscountValue;
+
+    // Apply global adjustment
+    const globalValue = globalAdjustment.isPercentage 
+      ? Math.round(totalBase * globalAdjustment.amount / 100) 
+      : globalAdjustment.amount;
+
+    if (globalAdjustment.type === 'surcharge') {
+      finalTotal += globalValue;
+    } else {
+      finalTotal -= globalValue;
     }
 
     let vatValue = 0;
     if (includeVAT) {
-      vatValue = finalTotal * (vatRate / 100);
+      vatValue = Math.round(finalTotal * (vatRate / 100));
       finalTotal += vatValue;
     }
 
-    const deposit = finalTotal * 0.5;
+    const deposit = Math.round(finalTotal * 0.5);
 
     return {
       nights: breakdown,
