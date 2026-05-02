@@ -37,7 +37,7 @@ const getSupabaseConfig = () => {
   const url = process.env.SUPABASE_URL || "";
   const key = process.env.SUPABASE_ANON_KEY || "";
 
-  const isJwt = (k: string) => k && k.startsWith("eyJ");
+  const isJwt = (k: string) => k && (k.startsWith("eyJ") || k.startsWith("sb_"));
   
   return { url, key, isValid: !!(url && key && isJwt(key)) };
 };

@@ -304,10 +304,10 @@ export default function App() {
         <div className="space-y-8">
             {/* Modern Booking Bar */}
             <section className="bg-white rounded-3xl shadow-xl border border-zinc-200 overflow-visible relative z-30">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 lg:divide-x divide-zinc-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-zinc-200 xl:divide-y-0 xl:divide-x">
                 
                 {/* Branch Selection Dropdown */}
-                <div className="relative p-4 lg:p-6">
+                <div className="relative p-3 lg:p-4">
                   <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-2 tracking-wider">Cơ sở</label>
                   <button 
                     onClick={() => setShowBranchDropdown(!showBranchDropdown)}
@@ -315,10 +315,10 @@ export default function App() {
                   >
                     <div className="flex items-center gap-3">
                       <div className={cn(
-                        "p-2 rounded-lg transition-colors",
+                        "p-1.5 rounded-lg transition-colors",
                         selectedBranchId ? BRANCH_THEMES[branches.findIndex(b => b.id === selectedBranchId) % BRANCH_THEMES.length].bg : "bg-zinc-100"
                       )}>
-                        <Building size={18} className={cn(
+                        <Building size={16} className={cn(
                           selectedBranchId ? BRANCH_THEMES[branches.findIndex(b => b.id === selectedBranchId) % BRANCH_THEMES.length].text : "text-zinc-400"
                         )} />
                       </div>
@@ -378,15 +378,15 @@ export default function App() {
                 </div>
 
                 {/* Room Selection Dropdown */}
-                <div className="relative p-4 lg:p-6">
+                <div className="relative p-3 lg:p-4">
                   <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-2 tracking-wider">Loại phòng</label>
                   <button 
                     onClick={() => setShowRoomDropdown(!showRoomDropdown)}
                     className="w-full flex items-center justify-between group"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-zinc-100 text-zinc-400 rounded-lg group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-                        <Hotel size={18} />
+                      <div className="p-1.5 bg-zinc-100 text-zinc-400 rounded-lg group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                        <Hotel size={16} />
                       </div>
                       <div className="text-left">
                         <div className="text-sm font-bold text-zinc-900 truncate max-w-[200px]">
@@ -455,18 +455,18 @@ export default function App() {
                 </div>
 
                 {/* Stay Duration Picker */}
-                <div className="p-4 lg:p-6 relative">
+                <div className="p-3 lg:p-4 relative">
                   <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-2 tracking-wider">
                     Thời gian lưu trú
                   </label>
-                  <div className="flex items-center gap-3 bg-zinc-50 p-2 rounded-2xl border border-zinc-100 hover:border-indigo-200 transition-all">
-                    <div className="flex-1 grid grid-cols-2 divide-x divide-zinc-200">
+                  <div className="flex items-center gap-2 bg-zinc-50 p-1.5 rounded-2xl border border-zinc-100 hover:border-indigo-200 transition-all">
+                    <div className="flex-1 grid grid-cols-2 divide-x divide-zinc-200 overflow-hidden">
                       <button 
                         onClick={() => setShowDatePicker(showDatePicker === 'checkIn' ? null : 'checkIn')}
                         className="px-3 text-left group"
                       >
                         <div className="text-[9px] text-zinc-400 font-bold uppercase tracking-tighter">Nhận phòng</div>
-                        <div className="text-sm font-black text-zinc-900 group-hover:text-indigo-600 transition-colors">
+                        <div className="text-[13px] sm:text-sm font-black text-zinc-900 group-hover:text-indigo-600 transition-colors whitespace-nowrap">
                           {checkIn ? format(parseISO(checkIn), 'dd/MM/yyyy') : 'Chọn'}
                         </div>
                       </button>
@@ -475,12 +475,12 @@ export default function App() {
                         className="px-3 text-left group"
                       >
                         <div className="text-[9px] text-zinc-400 font-bold uppercase tracking-tighter">Trả phòng</div>
-                        <div className="text-sm font-black text-zinc-900 group-hover:text-indigo-600 transition-colors">
+                        <div className="text-[13px] sm:text-sm font-black text-zinc-900 group-hover:text-indigo-600 transition-colors whitespace-nowrap">
                           {checkOut ? format(parseISO(checkOut), 'dd/MM/yyyy') : 'Chọn'}
                         </div>
                       </button>
                     </div>
-                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-zinc-100 flex items-center justify-center text-indigo-600 shrink-0">
+                    <div className="w-9 h-9 bg-white rounded-xl shadow-sm border border-zinc-100 flex items-center justify-center text-indigo-600 shrink-0">
                       <div className="text-center">
                         <div className="text-[10px] font-black leading-none">{calculation?.nights.length || 0}</div>
                         <div className="text-[7px] uppercase font-bold">đêm</div>
@@ -528,10 +528,10 @@ export default function App() {
                 </div>
 
                 {/* Global Adjustment */}
-                <div className="p-4 lg:p-6">
+                <div className="p-3 lg:p-4">
                   <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-2 tracking-wider">Điều chỉnh tổng đơn</label>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center bg-zinc-50 rounded-2xl border border-zinc-200 p-1.5 group hover:border-indigo-300 transition-all shadow-sm">
+                    <div className="flex-1 flex items-center bg-zinc-50 rounded-2xl border border-zinc-200 p-1 group hover:border-indigo-300 transition-all shadow-sm">
                       <div className="relative">
                         <button 
                           onClick={() => setShowGlobalAdjTypeDropdown(showGlobalAdjTypeDropdown === 'global' ? null : 'global')}
@@ -596,7 +596,7 @@ export default function App() {
                       <button 
                         onClick={() => setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })}
                         className={cn(
-                          "w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm",
+                          "w-9 h-9 flex items-center justify-center rounded-xl transition-all shadow-sm",
                           globalAdjustment.isPercentage ? "bg-indigo-600 text-white" : "bg-white text-zinc-400 border border-zinc-200"
                         )}
                       >
