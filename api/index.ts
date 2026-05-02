@@ -20,7 +20,12 @@ app.use(express.json());
 // Helper for Supabase responses
 const handleSupabaseResponse = (res: express.Response, { data, error }: any) => {
   if (error) {
-    return res.status(500).json({ error: error.message });
+    console.error("Supabase API Error:", error);
+    return res.status(500).json({ 
+      error: error.message,
+      details: error.details,
+      hint: error.hint
+    });
   }
   res.json(data);
 };
