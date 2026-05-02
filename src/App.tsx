@@ -324,8 +324,8 @@ export default function App() {
 
         <div className="space-y-8">
             {/* Modern Booking Bar */}
-            <section className="bg-white rounded-3xl shadow-xl border border-zinc-200 overflow-visible relative z-30">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-zinc-200 xl:divide-y-0 xl:divide-x">
+            <section className="bg-zinc-50/30 rounded-3xl shadow-xl border border-zinc-300/50 overflow-visible relative z-30">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y divide-zinc-200 md:divide-zinc-200 xl:divide-y-0 xl:divide-x">
                 
                 {/* Branch Selection Dropdown */}
                 <div className="relative p-3 lg:p-4">
@@ -480,7 +480,7 @@ export default function App() {
                   <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-2 tracking-wider">
                     Thời gian lưu trú
                   </label>
-                  <div className="flex items-center gap-2 bg-zinc-50 p-1.5 rounded-2xl border border-zinc-100 hover:border-indigo-200 transition-all">
+                  <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-zinc-200 hover:border-indigo-200 transition-all shadow-sm">
                     <div className="flex-1 grid grid-cols-2 divide-x divide-zinc-200 overflow-hidden">
                       <button 
                         onClick={() => setShowDatePicker(showDatePicker === 'checkIn' ? null : 'checkIn')}
@@ -552,7 +552,7 @@ export default function App() {
                 <div className="p-3 lg:p-4">
                   <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-2 tracking-wider">Điều chỉnh tổng đơn</label>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center bg-zinc-50 rounded-2xl border border-zinc-200 p-1 group hover:border-indigo-300 transition-all shadow-sm">
+                    <div className="flex-1 flex items-center bg-white rounded-2xl border border-zinc-200 p-1 group hover:border-indigo-300 transition-all shadow-sm">
                       <div className="relative">
                         <button 
                           onClick={() => setShowGlobalAdjTypeDropdown(showGlobalAdjTypeDropdown === 'global' ? null : 'global')}
