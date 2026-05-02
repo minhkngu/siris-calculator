@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-zinc-50 text-zinc-900 antialiased;
+  }
+}
+
+.glass {
+  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-sm;
+}
+
+/* Modern DayPicker styling */
+.rdp {
+  --rdp-cell-size: 40px;
+  --rdp-accent-color: #4f46e5;
+  --rdp-background-color: #eef2ff;
+  margin: 0;
+}
+
+.rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover {
+  background-color: var(--rdp-accent-color);
+  color: white;
+  font-weight: bold;
+  border-radius: 12px;
+}
+
+.rdp-button:hover:not([disabled]):not(.rdp-day_selected) {
+  background-color: var(--rdp-background-color);
+  border-radius: 12px;
+}
+
+.rdp-day {
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.rdp-head_cell {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  padding-bottom: 0.5rem;
+}
+
+.rdp-nav_button {
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #64748b;
+}
+
+.rdp-nav_button:hover {
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+.rdp-caption_label {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+

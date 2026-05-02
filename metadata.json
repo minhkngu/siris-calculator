@@ -1,0 +1,5 @@
+{
+  "name": "Hotel Price Calculator",
+  "description": "A professional tool for calculating hotel room prices with support for weekday/weekend rates, special date adjustments, and global surcharges or discounts.",
+  "requestFramePermissions": []
+}
