@@ -34,6 +34,7 @@ import {
   StayDiscount
 } from './types';
 import { SurchargeBanner } from './components/SurchargeBanner';
+import { supabase } from './lib/supabase';
 
 const BRANCH_THEMES = [
   { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', dot: 'bg-indigo-500', shadow: 'shadow-indigo-100' },
@@ -81,41 +82,61 @@ export default function App() {
   const fetchData = async () => {
     try {
       setFetchError(null);
-      const [bRes, rRes, dRes, aRes] = await Promise.all([
-        fetch('/api/branches'),
-        fetch('/api/room-types'),
-        fetch('/api/stay-discounts'),
-        fetch('/api/date-adjustments')
-      ]);
       
-      if (!bRes.ok || !rRes.ok || !dRes.ok || !aRes.ok) {
-        const failedRes = [bRes, rRes, dRes, aRes].find(r => !r.ok);
-        if (failedRes) {
-          const errorData = await failedRes.json().catch(() => ({ error: 'Lỗi không xác định' }));
-          throw new Error(errorData.error || `Lỗi máy chủ (${failedRes.status})`);
-        }
-        throw new Error('Lỗi khi tải dữ liệu từ máy chủ');
+      const [
+        { data: bData, error: bErr },
+        { data: rRaw, error: rErr },
+        { data: dRaw, error: dErr },
+        { data: aRaw, error: aErr }
+      ] = await Promise.all([
+        supabase.from('branches').select('*'),
+        supabase.from('room_types').select('*'),
+        supabase.from('stay_discounts').select('*'),
+        supabase.from('date_adjustments').select('*')
+      ]);
+
+      if (bErr || rErr || dErr || aErr) {
+        throw new Error((bErr || rErr || dErr || aErr)?.message || 'Lỗi khi tải dữ liệu từ Supabase');
       }
 
-      const bData = await bRes.json();
-      const rData = await rRes.json();
-      const dData = await dRes.json();
-      const aData = await aRes.json();
-      
-      console.log("Branches loaded:", bData);
-      console.log("Room Types loaded:", rData);
+      // Map RoomTypes
+      const rData = (rRaw || []).map((r: any) => ({
+        id: r.id,
+        branchId: r.branch_id || r.branchId || r.branchid,
+        name: r.name,
+        weekdayPrice: r.weekday_price || r.weekdayPrice || r.weekdayprice || 0,
+        weekendPrice: r.weekend_price || r.weekendPrice || r.weekendprice || 0
+      }));
 
-      setBranches(bData);
-      setRoomTypes(rData.sort((a: RoomType, b: RoomType) => a.weekdayPrice - b.weekdayPrice));
+      // Map StayDiscounts
+      const dData = (dRaw || []).map((d: any) => ({
+        id: d.id,
+        minNights: d.min_nights || d.minNights || d.minnights || 1,
+        discountAmount: d.discount_amount || d.discountAmount || d.discountamount || 0,
+        isPercentage: d.is_percentage !== undefined ? d.is_percentage : d.isPercentage,
+        name: d.name
+      }));
+
+      // Map DateAdjustments
+      const aData = (aRaw || []).map((a: any) => ({
+        id: a.id,
+        date: a.date,
+        type: a.type,
+        amount: a.amount,
+        isPercentage: a.is_percentage !== undefined ? a.is_percentage : a.isPercentage,
+        note: a.note
+      }));
+      
+      setBranches(bData || []);
+      setRoomTypes(rData.sort((a, b) => a.weekdayPrice - b.weekdayPrice));
       setStayDiscounts(dData);
       setDateAdjustments(aData);
-      console.log("Data fetched in App.tsx:", aData);
-      setCompareBranchIds(bData.map((b: Branch) => b.id));
-      setCompareRoomIds(rData.sort((a: RoomType, b: RoomType) => a.weekdayPrice - b.weekdayPrice).map((r: RoomType) => r.id));
+      
+      setCompareBranchIds((bData || []).map(b => b.id));
+      setCompareRoomIds(rData.map(r => r.id));
 
-      if (bData.length > 0) {
-        // If no branch selected, or current selected branch is not in the new data
-        if (!selectedBranchId || !bData.find((b: Branch) => b.id === selectedBranchId)) {
+      if (bData && bData.length > 0) {
+        if (!selectedBranchId || !bData.find(b => b.id === selectedBranchId)) {
           setSelectedBranchId(bData[0].id);
         }
       }
