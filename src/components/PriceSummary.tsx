@@ -29,11 +29,11 @@ export function PriceSummary({
 }: PriceSummaryProps) {
     return (
         <section className="bg-white rounded-3xl shadow-xl border border-zinc-200 overflow-hidden">
-            <div className="p-8 bg-indigo-600 text-white">
-                <div className="flex justify-between items-start mb-6">
+            <div className="p-4 bg-indigo-600 text-white">
+                <div className="flex justify-between items-start mb-2">
                     <div>
-                        <h2 className="text-[10px] font-bold text-indigo-100 uppercase tracking-widest mb-1">Tổng tiền thanh toán</h2>
-                        <div className="text-4xl font-black tracking-tight text-white">
+                        <h2 className="text-[9px] font-bold text-indigo-100 uppercase tracking-widest mb-0.5">Tổng tiền thanh toán</h2>
+                        <div className="text-xl font-black tracking-tight text-white">
                             {calculation ? formatCurrency(calculation.finalTotal) : '---'}
                         </div>
                     </div>
@@ -45,30 +45,30 @@ export function PriceSummary({
                 </div>
 
                 {calculation && (
-                    <div className="grid grid-cols-2 gap-4 pt-6 border-t border-white/20">
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/20">
                         <div>
-                            <div className="text-[10px] text-indigo-100 uppercase font-bold mb-1">Đặt cọc (50%)</div>
-                            <div className="text-xl font-bold text-white">{formatCurrency(calculation.deposit)}</div>
+                            <div className="text-[9px] text-indigo-100 uppercase font-bold">Đặt cọc (50%)</div>
+                            <div className="text-base font-bold text-white">{formatCurrency(calculation.deposit)}</div>
                         </div>
                         <div className="text-right">
-                            <div className="text-[10px] text-indigo-100 uppercase font-bold mb-1">Còn lại</div>
-                            <div className="text-xl font-bold text-indigo-100">{formatCurrency(calculation.finalTotal - calculation.deposit)}</div>
+                            <div className="text-[9px] text-indigo-100 uppercase font-bold">Còn lại</div>
+                            <div className="text-base font-bold text-indigo-100">{formatCurrency(calculation.finalTotal - calculation.deposit)}</div>
                         </div>
                     </div>
                 )}
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-3 space-y-1.5">
                 {calculation ? (
                     <>
-                        <div className="space-y-3">
+                        <div className="space-y-1.5">
                             <button
                                 onClick={onToggleNightlyDetails}
-                                className="w-full flex justify-between items-center text-sm group"
+                                className="w-full flex justify-between items-center text-xs group"
                             >
                                 <span className="text-zinc-500 group-hover:text-indigo-600 transition-colors flex items-center gap-1">
                                     Giá gốc ({calculation.nights.length} đêm)
-                                    <ChevronDown size={14} className={cn("transition-transform", showNightlyDetails && "rotate-180")} />
+                                    <ChevronDown size={12} className={cn("transition-transform", showNightlyDetails && "rotate-180")} />
                                 </span>
                                 <span className="font-bold text-zinc-900">{formatCurrency(calculation.totalBase)}</span>
                             </button>
@@ -81,7 +81,7 @@ export function PriceSummary({
                                         exit={{ height: 0, opacity: 0 }}
                                         className="overflow-hidden"
                                     >
-                                        <div className="bg-zinc-50 rounded-xl p-3 space-y-2 border border-zinc-100">
+                                        <div className="bg-zinc-50 rounded-xl p-2 space-y-1 border border-zinc-100">
                                             {calculation.nights.map((night, idx) => {
                                                 const hasAdjustment = night.adjustments.length > 0;
                                                 const isSurcharge = night.adjustments.some(a => a.type === 'surcharge');
@@ -90,7 +90,7 @@ export function PriceSummary({
                                                     <div
                                                         key={idx}
                                                         className={cn(
-                                                            "flex justify-between items-center p-2 rounded-lg transition-all",
+                                                            "flex justify-between items-center p-1.5 rounded-lg transition-all",
                                                             hasAdjustment
                                                                 ? isSurcharge
                                                                     ? "bg-rose-50/50 border border-rose-100"
@@ -144,25 +144,10 @@ export function PriceSummary({
                                 )}
                             </AnimatePresence>
 
-                            {globalAdjustment.amount !== 0 && (
-                                <div className={cn(
-                                    "flex justify-between text-sm p-3 rounded-xl",
-                                    globalAdjustment.type === 'surcharge' ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
-                                )}>
-                                    <span className="flex items-center gap-2">
-                                        <Tag size={14} />
-                                        <span>{globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'} {globalAdjustment.isPercentage ? `${globalAdjustment.amount}%` : ''}</span>
-                                    </span>
-                                    <span className="font-bold">
-                                        {globalAdjustment.type === 'surcharge' ? '+' : '-'} {formatCurrency(calculation.globalAdjustmentValue)}
-                                    </span>
-                                </div>
-                            )}
-
                             {calculation.stayDiscount && (
-                                <div className="flex justify-between text-sm p-3 rounded-xl bg-indigo-50 text-indigo-700">
-                                    <span className="flex items-center gap-2">
-                                        <Percent size={14} />
+                                <div className="flex justify-between text-xs p-1.5 rounded-xl bg-indigo-50 text-indigo-700">
+                                    <span className="flex items-center gap-1.5">
+                                        <Percent size={12} />
                                         <span>{calculation.stayDiscount.name}</span>
                                     </span>
                                     <span className="font-bold">
@@ -171,9 +156,23 @@ export function PriceSummary({
                                 </div>
                             )}
 
-                            <div className="pt-4 border-t border-zinc-100 space-y-3">
+                            <div className="pt-1.5 border-t border-zinc-100 space-y-1">
+                                {globalAdjustment.amount !== 0 && (
+                                    <div className={cn(
+                                        "flex justify-between text-xs p-1.5 rounded-xl",
+                                        globalAdjustment.type === 'surcharge' ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
+                                    )}>
+                                        <span className="flex items-center gap-1.5">
+                                            <Tag size={12} />
+                                            <span>{globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'} {globalAdjustment.isPercentage ? `${globalAdjustment.amount}%` : ''}</span>
+                                        </span>
+                                        <span className="font-bold">
+                                            {globalAdjustment.type === 'surcharge' ? '+' : '-'} {formatCurrency(calculation.globalAdjustmentValue)}
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="flex items-center justify-between">
-                                    <label className="flex items-center gap-2 text-sm text-zinc-600 cursor-pointer">
+                                    <label className="flex items-center gap-1.5 text-xs text-zinc-600 cursor-pointer">
                                         <input
                                             type="checkbox"
                                             checked={includeVAT}
@@ -196,7 +195,7 @@ export function PriceSummary({
                                     )}
                                 </div>
                                 {includeVAT && (
-                                    <div className="flex justify-between text-sm text-zinc-600">
+                                    <div className="flex justify-between text-xs text-zinc-600">
                                         <span>Thuế VAT ({vatRate}%)</span>
                                         <span className="font-bold">{formatCurrency(calculation.vatValue)}</span>
                                     </div>
@@ -205,9 +204,9 @@ export function PriceSummary({
                         </div>
                     </>
                 ) : (
-                    <div className="text-center py-12">
-                        <Calculator size={40} className="mx-auto text-zinc-200 mb-3" />
-                        <p className="text-sm text-zinc-400">Vui lòng chọn đầy đủ thông tin để xem báo giá</p>
+                    <div className="text-center py-8">
+                        <Calculator size={32} className="mx-auto text-zinc-200 mb-2" />
+                        <p className="text-xs text-zinc-400">Vui lòng chọn đầy đủ thông tin để xem báo giá</p>
                     </div>
                 )}
             </div>

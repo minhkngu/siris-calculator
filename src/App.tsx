@@ -228,6 +228,10 @@ export default function App() {
                   if (tab === 'branch') setCompareBranchIds(branches.map(b => b.id));
                   else setCompareRoomIds(roomTypes.map(r => r.id));
                 }}
+                onDeselectAll={(tab) => {
+                  if (tab === 'branch') setCompareBranchIds([]);
+                  else setCompareRoomIds([]);
+                }}
                 onSelect={(branchId, roomId) => {
                   setSelectedBranchId(branchId);
                   setSelectedRoomId(roomId);

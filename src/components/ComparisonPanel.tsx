@@ -26,6 +26,7 @@ interface ComparisonPanelProps {
     onToggleBranchFilter: (branchId: string) => void;
     onToggleRoomFilter: (roomId: string) => void;
     onSelectAll: (tab: 'branch' | 'room') => void;
+    onDeselectAll: (tab: 'branch' | 'room') => void;
     onSelect: (branchId: string, roomId: string) => void;
     formatCurrency: (amount: number) => string;
 }
@@ -45,6 +46,7 @@ export function ComparisonPanel({
     onToggleBranchFilter,
     onToggleRoomFilter,
     onSelectAll,
+    onDeselectAll,
     onSelect,
     formatCurrency,
 }: ComparisonPanelProps) {
@@ -105,15 +107,43 @@ export function ComparisonPanel({
                                     </button>
                                 </div>
 
-                                <div className="p-2 border-b border-zinc-100 mb-1 flex justify-between items-center">
-                                    <span className="text-[10px] font-bold text-zinc-400 uppercase">
-                                        {filterTab === 'branch' ? 'Chọn cơ sở so sánh' : 'Chọn loại phòng so sánh'}
-                                    </span>
+                                <div className="p-1 border-b border-zinc-100 mb-1">
                                     <button
-                                        onClick={() => onSelectAll(filterTab)}
-                                        className="text-[9px] text-indigo-600 font-bold hover:underline"
+                                        onClick={() => {
+                                            const allSelected = filterTab === 'branch'
+                                                ? compareBranchIds.length === branches.length
+                                                : compareRoomIds.length === roomTypes.length;
+                                            if (allSelected) {
+                                                onDeselectAll(filterTab);
+                                            } else {
+                                                onSelectAll(filterTab);
+                                            }
+                                        }}
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-bold transition-all border w-full justify-center",
+                                            filterTab === 'branch'
+                                                ? compareBranchIds.length === branches.length
+                                                    ? "bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100"
+                                                    : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50"
+                                                : compareRoomIds.length === roomTypes.length
+                                                    ? "bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100"
+                                                    : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50"
+                                        )}
                                     >
-                                        Tất cả
+                                        {(
+                                            filterTab === 'branch'
+                                                ? compareBranchIds.length === branches.length
+                                                : compareRoomIds.length === roomTypes.length
+                                        ) ? (
+                                            <>
+                                                <Check size={9} className="text-indigo-600" />
+                                                <span className="text-indigo-600">Đã chọn tất cả</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span>Chọn tất cả</span>
+                                            </>
+                                        )}
                                     </button>
                                 </div>
 
@@ -135,27 +165,25 @@ export function ComparisonPanel({
                                             </button>
                                         ))
                                     ) : (
-                                        roomTypes
-                                            .filter(r => compareBranchIds.includes(r.branchId))
-                                            .map(room => {
-                                                const branch = branches.find(b => b.id === room.branchId);
-                                                return (
-                                                    <button
-                                                        key={room.id}
-                                                        onClick={() => onToggleRoomFilter(room.id)}
-                                                        className={cn(
-                                                            "w-full flex items-center justify-between p-2 rounded-lg text-xs transition-all",
-                                                            compareRoomIds.includes(room.id)
-                                                                ? "bg-indigo-50 text-indigo-700 font-semibold"
-                                                                : "text-zinc-600 hover:bg-zinc-50"
-                                                        )}
-                                                    >
-                                                        <div className="flex-1 text-left">{room.name}</div>
-                                                        <div className="text-[10px] text-zinc-400 font-normal mr-2">{branch?.name}</div>
-                                                        {compareRoomIds.includes(room.id) && <Check size={12} />}
-                                                    </button>
-                                                );
-                                            })
+                                        roomTypes.map(room => {
+                                            const branch = branches.find(b => b.id === room.branchId);
+                                            return (
+                                                <button
+                                                    key={room.id}
+                                                    onClick={() => onToggleRoomFilter(room.id)}
+                                                    className={cn(
+                                                        "w-full flex items-center justify-between p-2 rounded-lg text-xs transition-all",
+                                                        compareRoomIds.includes(room.id)
+                                                            ? "bg-indigo-50 text-indigo-700 font-semibold"
+                                                            : "text-zinc-600 hover:bg-zinc-50"
+                                                    )}
+                                                >
+                                                    <div className="flex-1 text-left">{room.name}</div>
+                                                    <div className="text-[10px] text-zinc-400 font-normal mr-2">{branch?.name}</div>
+                                                    {compareRoomIds.includes(room.id) && <Check size={12} />}
+                                                </button>
+                                            );
+                                        })
                                     )}
                                 </div>
                             </div>
@@ -182,11 +210,10 @@ export function ComparisonPanel({
                         const isCheapest = idx === 0 && comparisons.length > 1;
 
                         return (
-                            <button
+                            <div
                                 key={room.id}
-                                onClick={() => onSelect(room.branchId, room.id)}
                                 className={cn(
-                                    "w-full p-4 flex items-center justify-between hover:bg-zinc-50 transition-all text-left group border-l-4",
+                                    "w-full p-4 flex items-center justify-between transition-all text-left border-l-4",
                                     selectedRoomId === room.id ? cn(theme.bg, theme.border) : cn("border-transparent", theme.bg, "bg-opacity-20")
                                 )}
                             >
@@ -228,7 +255,7 @@ export function ComparisonPanel({
                                         </div>
                                     )}
                                 </div>
-                            </button>
+                            </div>
                         );
                     })
                 )}
