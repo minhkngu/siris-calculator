@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { format, addDays, getDay, eachDayOfInterval, parseISO, isValid } from 'date-fns';
-import { RoomType, DateAdjustment, GlobalAdjustment, StayDiscount, CalculationResult } from './types';
+import { RoomType, DateAdjustment, GlobalAdjustment, StayDiscount, EarlyCheckinLateCheckoutType, CalculationResult } from './types';
 
 export function calculateForRoomLogic(
     room: RoomType,
@@ -10,7 +10,8 @@ export function calculateForRoomLogic(
     globalAdjustment: GlobalAdjustment,
     stayDiscounts: StayDiscount[],
     includeVAT: boolean,
-    vatRate: number
+    vatRate: number,
+    earlyLateOptions: Set<EarlyCheckinLateCheckoutType> = new Set()
 ): CalculationResult | null {
     const start = parseISO(checkIn);
     const end = parseISO(checkOut);
@@ -83,6 +84,27 @@ export function calculateForRoomLogic(
         finalTotal -= globalValue;
     }
 
+    // Calculate early check-in / late check-out fees
+    let earlyLateTotal = 0;
+    if (earlyLateOptions.has('early_1230')) {
+        earlyLateTotal += 150000;
+    }
+    if (earlyLateOptions.has('early_1300')) {
+        earlyLateTotal += 100000;
+    }
+    if (earlyLateOptions.has('late_1300')) {
+        earlyLateTotal += 100000;
+    }
+    if (earlyLateOptions.has('late_1800')) {
+        // 80% of base price of the last night
+        const lastNight = breakdown[breakdown.length - 1];
+        if (lastNight) {
+            earlyLateTotal += Math.round(lastNight.basePrice * 80 / 100);
+        }
+    }
+
+    finalTotal += earlyLateTotal;
+
     let vatValue = 0;
     if (includeVAT) {
         vatValue = Math.round(finalTotal * (vatRate / 100));
@@ -97,6 +119,7 @@ export function calculateForRoomLogic(
         globalAdjustmentValue: globalValue,
         stayDiscount: bestStayDiscount,
         stayDiscountValue,
+        earlyLateTotal,
         vatValue,
         finalTotal,
         deposit
@@ -111,12 +134,13 @@ export function useCalculateForRoom(
     globalAdjustment: GlobalAdjustment,
     stayDiscounts: StayDiscount[],
     includeVAT: boolean,
-    vatRate: number
+    vatRate: number,
+    earlyLateOptions: Set<EarlyCheckinLateCheckoutType> = new Set()
 ): CalculationResult | null {
     return useMemo(() => {
         if (!room) return null;
-        return calculateForRoomLogic(room, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate);
-    }, [room, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate]);
+        return calculateForRoomLogic(room, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, earlyLateOptions);
+    }, [room, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, earlyLateOptions]);
 }
 
 export function useComparisons(
@@ -132,7 +156,8 @@ export function useComparisons(
     globalAdjustment: GlobalAdjustment,
     stayDiscounts: StayDiscount[],
     includeVAT: boolean,
-    vatRate: number
+    vatRate: number,
+    earlyLateOptions: Set<EarlyCheckinLateCheckoutType> = new Set()
 ) {
     return useMemo(() => {
         if (!selectedRoom || !calculation) return [];
@@ -140,7 +165,7 @@ export function useComparisons(
         return roomTypes
             .filter(r => compareBranchIds.includes(r.branchId) && compareRoomIds.includes(r.id))
             .map(r => {
-                const calc = calculateForRoomLogic(r, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate);
+                const calc = calculateForRoomLogic(r, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, earlyLateOptions);
                 const branch = branches.find(b => b.id === r.branchId);
                 return {
                     room: r,
@@ -150,5 +175,5 @@ export function useComparisons(
                 };
             })
             .sort((a, b) => (a.calculation?.finalTotal || 0) - (b.calculation?.finalTotal || 0));
-    }, [calculation, roomTypes, branches, compareBranchIds, compareRoomIds, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate]);
+    }, [calculation, roomTypes, branches, compareBranchIds, compareRoomIds, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, earlyLateOptions]);
 }

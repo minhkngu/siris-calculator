@@ -7,7 +7,7 @@
 
 @layer base {
   body {
-    @apply bg-zinc-50 text-zinc-900 antialiased;
+    @apply bg-gradient-to-br from-slate-100 to-slate-200 text-zinc-900 antialiased;
   }
 }
 
@@ -23,7 +23,9 @@
   margin: 0;
 }
 
-.rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover {
+.rdp-day_selected,
+.rdp-day_selected:focus-visible,
+.rdp-day_selected:hover {
   background-color: var(--rdp-accent-color);
   color: white;
   font-weight: bold;
@@ -65,4 +67,3 @@
   color: #1e293b;
   font-size: 0.9rem;
 }
-

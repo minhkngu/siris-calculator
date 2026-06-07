@@ -10,7 +10,7 @@ import { ComparisonPanel } from './components/ComparisonPanel';
 import { FetchErrorView } from './components/FetchErrorView';
 import { useCalculateForRoom, useComparisons } from './components/useHotelCalculator';
 import { supabase } from './lib/supabase';
-import { Branch, RoomType, DateAdjustment, GlobalAdjustment, StayDiscount, CalculationResult } from './components/types';
+import { Branch, RoomType, DateAdjustment, GlobalAdjustment, StayDiscount, CalculationResult, EarlyCheckinLateCheckoutType } from './components/types';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -49,6 +49,20 @@ export default function App() {
 
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  const [selectedEarlyLateOptions, setSelectedEarlyLateOptions] = useState<Set<EarlyCheckinLateCheckoutType>>(new Set());
+
+  const toggleEarlyLateOption = useCallback((type: EarlyCheckinLateCheckoutType) => {
+    setSelectedEarlyLateOptions(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
+      }
+      return next;
+    });
+  }, []);
+
   const fetchData = useCallback(async () => {
     try {
       setFetchError(null);
@@ -68,13 +82,15 @@ export default function App() {
         throw new Error((bErr || rErr || dErr || aErr)?.message || 'Lỗi khi tải dữ liệu từ Supabase');
       }
 
-      const rData = (rRaw || []).map((r: any) => ({
+      const rRawData = (rRaw || []).map((r: any) => ({
         id: r.id,
         branchId: r.branch_id || r.branchId || r.branchid,
         name: r.name,
         weekdayPrice: r.weekday_price || r.weekdayPrice || r.weekdayprice || 0,
-        weekendPrice: r.weekend_price || r.weekendPrice || r.weekendprice || 0
+        weekendPrice: r.weekend_price || r.weekendPrice || r.weekendprice || 0,
+        isHidden: r.is_hidden === true || r.is_hidden === 1 || String(r.is_hidden).toLowerCase() === 'true'
       }));
+      const rData = rRawData.filter(r => !r.isHidden);
 
       const dData = (dRaw || []).map((d: any) => ({
         id: d.id,
@@ -99,7 +115,7 @@ export default function App() {
       setDateAdjustments(aData);
 
       setCompareBranchIds((bData || []).map(b => b.id));
-      setCompareRoomIds(rData.map(r => r.id));
+      setCompareRoomIds(rRawData.filter(r => !r.isHidden).map(r => r.id));
 
       if (bData && bData.length > 0) {
         if (!selectedBranchId || !bData.find(b => b.id === selectedBranchId)) {
@@ -137,24 +153,24 @@ export default function App() {
     roomTypes.find(r => r.id === selectedRoomId)
     , [roomTypes, selectedRoomId]);
 
-  const calculation = useCalculateForRoom(selectedRoom, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate);
+  const calculation = useCalculateForRoom(selectedRoom, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions);
 
-  const comparisons = useComparisons(roomTypes, branches, compareBranchIds, compareRoomIds, selectedRoom, calculation, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate);
+  const comparisons = useComparisons(roomTypes, branches, compareBranchIds, compareRoomIds, selectedRoom, calculation, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions);
 
   if (loading) return <div className="flex items-center justify-center min-h-screen">Đang tải...</div>;
   if (fetchError) return <FetchErrorView message={fetchError} />;
 
   return (
-    <div className="min-h-screen bg-zinc-50 pb-20">
-      <main className="max-w-[1600px] mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-black tracking-tight text-zinc-900">Phần mềm tính tiền phòng</h1>
+    <div className="min-h-screen pb-20">
+      <main className="max-w-[1600px] mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div className="mb-4 sm:mb-8">
+          <h1 className="text-lg sm:text-2xl font-black tracking-tight text-zinc-900">Phần mềm tính tiền phòng</h1>
         </div>
 
         <SurchargeBanner adjustments={dateAdjustments} />
 
-        <div className="space-y-8">
-          <section className="bg-zinc-50/30 rounded-3xl shadow-xl border border-zinc-300/50 overflow-visible relative z-30">
+        <div className="space-y-4 sm:space-y-8">
+          <section className="bg-white/90 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-lg shadow-slate-200/50 border border-slate-200/80 overflow-visible relative z-30">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y divide-zinc-200 md:divide-zinc-200 xl:divide-y-0 xl:divide-x">
               <BranchDropdown
                 branches={branches}
@@ -196,7 +212,7 @@ export default function App() {
           </section>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <div className="lg:col-span-5 space-y-6">
+            <div className="lg:col-span-5">
               <PriceSummary
                 calculation={calculation}
                 globalAdjustment={globalAdjustment}
@@ -207,6 +223,8 @@ export default function App() {
                 onToggleVAT={(checked) => setIncludeVAT(checked)}
                 onVatRateChange={(rate) => setVatRate(rate)}
                 formatCurrency={formatCurrency}
+                selectedEarlyLateOptions={selectedEarlyLateOptions}
+                onToggleEarlyLateOption={toggleEarlyLateOption}
               />
             </div>
             <div className="lg:col-span-7">
@@ -232,18 +250,14 @@ export default function App() {
                   if (tab === 'branch') setCompareBranchIds([]);
                   else setCompareRoomIds([]);
                 }}
-                onSelect={(branchId, roomId) => {
-                  setSelectedBranchId(branchId);
-                  setSelectedRoomId(roomId);
-                }}
                 formatCurrency={formatCurrency}
               />
             </div>
           </div>
         </div>
       </main>
-      <footer className="max-w-5xl mx-auto px-4 py-8 border-t border-zinc-200 text-center">
-        <p className="text-sm text-zinc-400">© 2026 Hotel Price Calculator. Built for efficiency.</p>
+      <footer className="max-w-5xl mx-auto px-4 py-8 text-center">
+        <p className="text-sm text-slate-400">© 2026 Hotel Price Calculator. Built for efficiency.</p>
       </footer>
     </div>
   );
