@@ -1,74 +1,64 @@
-# Hotel Price Calculator - Phần mềm tính tiền phòng chuyên nghiệp
+# Hotel Price Calculator
 
-Hệ thống tính toán giá phòng khách sạn hiện đại, hỗ trợ quản lý giá linh hoạt theo chi nhánh, loại phòng, thời điểm và các chương trình khuyến mãi.
+Phần mềm tính tiền phòng khách sạn — hỗ trợ quản lý giá linh hoạt theo chi nhánh, loại phòng, thời điểm và các chương trình khuyến mãi.
 
-## 🌟 Tính năng nổi bật
+## Tính năng
 
-- **Quản lý đa chi nhánh**: Dễ dàng lựa chọn và xem thông tin giá phòng theo từng cơ sở.
-- **Giá phòng linh hoạt**: Hỗ trợ thiết lập giá khác nhau cho ngày thường (CN-T5) và cuối tuần (T6-T7).
-- **Điều chỉnh theo ngày (Surcharges/Discounts)**: Tự động áp dụng phụ thu hoặc giảm giá cho các ngày lễ, ngày đặc biệt.
-- **Khuyến mãi theo thời gian lưu trú**: Tự động tính toán giảm giá dựa trên số đêm khách ở.
-- **Điều chỉnh tổng đơn**: Cho phép thêm phụ thu hoặc giảm giá trực tiếp trên tổng hóa đơn (theo % hoặc số tiền cố định).
-- **Tính toán VAT**: Tùy chọn bao gồm thuế giá trị gia tăng.
-- **So sánh giá**: Bảng so sánh trực quan giữa các chi nhánh và loại phòng, tự động đánh dấu phương án rẻ nhất.
-- **Giao diện hiện đại**: Thiết kế tối giản, hiệu ứng mượt mà (Framer Motion), hỗ trợ tốt trên mọi thiết bị.
+- **Đa chi nhánh & loại phòng**: Lựa chọn và so sánh giá giữa các cơ sở.
+- **Giá linh hoạt**: Giá riêng cho ngày thường (CN-T5) và cuối tuần (T6-T7).
+- **Phụ thu/giảm giá theo ngày**: Tự động áp dụng cho ngày lễ, ngày đặc biệt.
+- **Giảm giá theo số đêm**: Tự động chọn ưu đãi tốt nhất dựa trên thời gian lưu trú.
+- **Điều chỉnh tổng đơn**: Phụ thu/giảm giá toàn bộ hóa đơn (% hoặc số tiền).
+- **VAT**: Tùy chọn bao gồm thuế GTGT, có thể điều chỉnh %.
+- **Check-in sớm / Check-out trễ**: 4 tùy chọn phí (12:30, 13:00, trước 13:00, trước 18:00).
+- **So sánh lựa chọn**: Bảng so sánh giá giữa các phòng/chi nhánh, hiển thị chênh lệch.
+- **Ẩn phòng**: Hỗ trợ ẩn phòng qua cột `is_hidden` trong database.
+- **Giao diện responsive**: Tối ưu cho cả mobile và desktop.
+- **Đặt cọc**: Tự động tính 50% đặt cọc.
 
-## 🛠 Công nghệ sử dụng
+## Công nghệ
 
-- **Frontend**: React 19, TypeScript 5.8 (strict mode), Vite 6.
-- **Styling**: Tailwind CSS 4, Framer Motion.
-- **Backend & Database**: Supabase (PostgreSQL).
-- **Icons & Utils**: Lucide React, date-fns, react-day-picker.
+React 19, TypeScript 5.8, Vite 6, Tailwind CSS 4, Supabase, Framer Motion, Lucide React, date-fns, react-day-picker.
 
-## 📁 Cấu trúc thư mục
+## Cấu trúc
 
-```text
-├── src/
-│   ├── App.tsx                      # Component chính (đã tách nhỏ)
-│   ├── main.tsx                     # Entry point
-│   ├── index.css                    # Styles (Tailwind CSS 4)
-│   ├── types.ts                     # Định nghĩa dữ liệu gốc
-│   ├── vite-env.d.ts                # Khai báo type cho Vite
-│   ├── components/
-│   │   ├── types.ts                 # Định nghĩa type dùng chung
-│   │   ├── useHotelCalculator.ts    # Logic tính toán giá (hook)
-│   │   ├── BranchDropdown.tsx       # Dropdown chọn chi nhánh
-│   │   ├── RoomDropdown.tsx         # Dropdown chọn loại phòng
-│   │   ├── DateRangePicker.tsx      # Chọn ngày nhận/trả phòng
-│   │   ├── GlobalAdjustmentControl.tsx # Điều chỉnh tổng đơn
-│   │   ├── PriceSummary.tsx         # Tổng tiền & chi tiết
-│   │   ├── ComparisonPanel.tsx      # So sánh các lựa chọn
-│   │   ├── SurchargeBanner.tsx      # Banner thông báo phụ thu
-│   │   └── FetchErrorView.tsx       # Hiển thị lỗi
-│   └── lib/
-│       ├── supabase.ts              # Cấu hình Supabase client
-│       └── utils.ts                 # Utility (clsx + tailwind-merge)
-├── .env.example                     # Mẫu cấu hình biến môi trường
-├── package.json
-├── tsconfig.json                    # Strict mode enabled
-└── vite.config.ts
+```
+src/
+├── App.tsx                     # State & layout chính
+├── main.tsx                    # Entry point
+├── index.css                   # Tailwind + custom styles
+├── types.ts                    # Types gốc
+├── components/
+│   ├── types.ts                # Types dùng chung (RoomType, CalculationResult...)
+│   ├── useHotelCalculator.ts   # Logic tính toán giá
+│   ├── BranchDropdown.tsx       # Chọn chi nhánh
+│   ├── RoomDropdown.tsx         # Chọn loại phòng
+│   ├── DateRangePicker.tsx      # Chọn ngày
+│   ├── GlobalAdjustmentControl.tsx # Điều chỉnh tổng đơn
+│   ├── PriceSummary.tsx         # Tổng tiền & chi tiết
+│   ├── ComparisonPanel.tsx      # So sánh lựa chọn
+│   ├── EarlyLateOptions.tsx     # Check-in sớm / Check-out trễ
+│   ├── SurchargeBanner.tsx      # Banner phụ thu
+│   └── FetchErrorView.tsx       # Trang lỗi
+└── lib/
+    ├── supabase.ts              # Supabase client
+    └── utils.ts                 # cn() utility
 ```
 
-## 🚀 Hướng dẫn cài đặt
+## Cài đặt
 
-### 1. Cài đặt thư viện
 ```bash
 npm install
+cp .env.example .env          # Điền VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+npm run dev                    # Dev server
+npm run build                  # Build production
 ```
 
-### 2. Cấu hình biến môi trường (.env)
-Tạo file `.env` từ mẫu `.env.example` và điền thông tin từ dự án Supabase của bạn:
-```env
-VITE_SUPABASE_URL=your_project_url
-VITE_SUPABASE_ANON_KEY=your_anon_key
-```
+## Database (Supabase)
 
-### 3. Chạy ứng dụng
-```bash
-npm run dev
-```
-
-### 4. Build production
-```bash
-npm run build
-```
+```sql
+-- Tạo các bảng (branch_id dạng snake_case hoặc camelCase đều được hỗ trợ)
+branches: id, name, address
+room_types: id, branch_id/branchId, name, weekday_price/weekdayPrice, weekend_price/weekendPrice, is_hidden/isHidden
+stay_discounts: id, name, min_nights/minNights, discount_amount/discountAmount, is_percentage/isPercentage
+date_adjustments: id, date, type, amount, is_percentage/isPercentage, note

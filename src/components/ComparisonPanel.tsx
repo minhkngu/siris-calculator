@@ -191,7 +191,7 @@ export function ComparisonPanel({
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 gap-1 sm:gap-2 p-1.5 sm:p-3">
-                        {comparisons.map(({ room, branch, calculation: roomCalc, diff }, idx) => {
+                        {comparisons.map(({ room, branch, calculation: roomCalc, diff }) => {
                             const branchIdx = branches.findIndex(b => b.id === room.branchId);
                             const branchColor = BRANCH_COLORS[branchIdx % BRANCH_COLORS.length];
                             const isSelected = selectedRoomId === room.id;
