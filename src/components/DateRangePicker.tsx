@@ -77,7 +77,7 @@ export function DateRangePicker({ checkIn, checkOut, showDatePicker, calculation
                                     }
                                 }}
                                 locale={vi}
-                                disabled={showDatePicker === 'checkOut' && checkIn ? { before: addDays(parseISO(checkIn), 1) } : { before: new Date() }}
+                                disabled={showDatePicker === 'checkOut' && checkIn ? { before: addDays(parseISO(checkIn), 1) } : undefined}
                             />
                         </motion.div>
                     </>
