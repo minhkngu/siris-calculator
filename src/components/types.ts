@@ -37,12 +37,14 @@ export interface GlobalAdjustment {
 }
 
 export type EarlyCheckinLateCheckoutType =
+    | 'early_0800'
     | 'early_1230'
     | 'early_1300'
     | 'late_1300'
     | 'late_1800';
 
 export const EARLY_LATE_OPTIONS: { type: EarlyCheckinLateCheckoutType; label: string; description: string; price: number; isPercentage: boolean; percentageRate?: number }[] = [
+    { type: 'early_0800', label: 'Check-in sớm từ 8:00', description: 'Nhận phòng từ 8:00 - 12:30', price: 0, isPercentage: true, percentageRate: 50 },
     { type: 'early_1230', label: 'Check-in sớm từ 12:30', description: 'Nhận phòng từ 12:30', price: 150000, isPercentage: false },
     { type: 'early_1300', label: 'Check-in sớm từ 13:00', description: 'Nhận phòng từ 13:00', price: 100000, isPercentage: false },
     { type: 'late_1300', label: 'Check-out trễ trước 13:00', description: 'Trả phòng trước 13:00', price: 100000, isPercentage: false },
@@ -65,6 +67,7 @@ export interface CalculationResult {
     stayDiscount: StayDiscount | undefined;
     stayDiscountValue: number;
     earlyLateTotal: number;
+    previousNightPrice: number;
     vatValue: number;
     finalTotal: number;
     deposit: number;

@@ -34,7 +34,11 @@ export function EarlyLateOptions({ selectedOptions, onToggle, calculation, forma
                         const isSelected = selectedOptions.has(option.type);
 
                         let displayPrice = '';
-                        if (option.type === 'late_1800') {
+                        if (option.type === 'early_0800') {
+                            const basePrice = calculation?.previousNightPrice || 0;
+                            const value = Math.round(basePrice * (option.percentageRate || 50) / 100);
+                            displayPrice = formatCurrency(value);
+                        } else if (option.type === 'late_1800') {
                             const lastNight = calculation?.nights?.[calculation.nights.length - 1];
                             const basePrice = lastNight?.basePrice || 0;
                             const value = Math.round(basePrice * (option.percentageRate || 80) / 100);
