@@ -49,7 +49,7 @@ export function ComparisonPanel({
     formatCurrency,
 }: ComparisonPanelProps) {
     return (
-        <section className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden">
+        <section className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
             {/* Header */}
             <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between border-b border-slate-100">
                 <div className="flex items-center gap-2">
