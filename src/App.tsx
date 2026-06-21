@@ -8,15 +8,18 @@ import { GlobalAdjustmentControl } from './components/GlobalAdjustmentControl';
 import { PriceSummary } from './components/PriceSummary';
 import { ComparisonPanel } from './components/ComparisonPanel';
 import { FetchErrorView } from './components/FetchErrorView';
+import { ItemCompensation } from './components/ItemCompensation';
 import { useCalculateForRoom, useComparisons } from './components/useHotelCalculator';
 import { supabase } from './lib/supabase';
-import { Branch, RoomType, DateAdjustment, GlobalAdjustment, StayDiscount, CalculationResult, EarlyCheckinLateCheckoutType } from './components/types';
+import { Branch, RoomType, DateAdjustment, GlobalAdjustment, StayDiscount, CalculationResult, EarlyCheckinLateCheckoutType, Item } from './components/types';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 };
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState<'room' | 'items'>('room');
+
   const [branches, setBranches] = useState<Branch[]>([]);
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
   const [stayDiscounts, setStayDiscounts] = useState<StayDiscount[]>([]);
@@ -51,6 +54,20 @@ export default function App() {
 
   const [selectedEarlyLateOptions, setSelectedEarlyLateOptions] = useState<Set<EarlyCheckinLateCheckoutType>>(new Set());
 
+  const [items, setItems] = useState<Item[]>([]);
+  const [selectedQuantities, setSelectedQuantities] = useState<Record<number, number>>({});
+
+  const onChangeQuantity = useCallback((id: number, quantity: number) => {
+    setSelectedQuantities(prev => {
+      if (quantity <= 0) {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      }
+      return { ...prev, [id]: quantity };
+    });
+  }, []);
+
   const toggleEarlyLateOption = useCallback((type: EarlyCheckinLateCheckoutType) => {
     setSelectedEarlyLateOptions(prev => {
       const next = new Set(prev);
@@ -70,16 +87,18 @@ export default function App() {
         { data: bData, error: bErr },
         { data: rRaw, error: rErr },
         { data: dRaw, error: dErr },
-        { data: aRaw, error: aErr }
+        { data: aRaw, error: aErr },
+        { data: iData, error: iErr }
       ] = await Promise.all([
         supabase.from('branches').select('*'),
         supabase.from('room_types').select('*'),
         supabase.from('stay_discounts').select('*'),
-        supabase.from('date_adjustments').select('*')
+        supabase.from('date_adjustments').select('*'),
+        supabase.from('items').select('*')
       ]);
 
-      if (bErr || rErr || dErr || aErr) {
-        throw new Error((bErr || rErr || dErr || aErr)?.message || 'Lỗi khi tải dữ liệu từ Supabase');
+      if (bErr || rErr || dErr || aErr || iErr) {
+        throw new Error((bErr || rErr || dErr || aErr || iErr)?.message || 'Lỗi khi tải dữ liệu từ Supabase');
       }
 
       const rRawData = (rRaw || []).map((r: any) => ({
@@ -109,10 +128,19 @@ export default function App() {
         note: a.note
       }));
 
+      const iDataMapped = (iData || []).map((i: any) => ({
+        id: i.id,
+        item_name: i.item_name,
+        kind: i.kind || null,
+        quantity: Number(i.quantity || 0),
+        unit_price: Number(i.unit_price || 0)
+      }));
+
       setBranches(bData || []);
       setRoomTypes(rData.sort((a, b) => a.weekdayPrice - b.weekdayPrice));
       setStayDiscounts(dData);
       setDateAdjustments(aData);
+      setItems(iDataMapped);
 
       setCompareBranchIds((bData || []).map(b => b.id));
       setCompareRoomIds(rRawData.filter(r => !r.isHidden).map(r => r.id));
@@ -164,97 +192,132 @@ export default function App() {
     <div className="min-h-screen pb-20">
       <main className="max-w-[1600px] mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <div className="mb-4 sm:mb-8">
-          <h1 className="text-lg sm:text-2xl font-black tracking-tight text-zinc-900">Phần mềm tính tiền phòng</h1>
+          <h1 className="text-lg sm:text-2xl font-black tracking-tight text-zinc-900">Phần mềm nội bộ Siris Residences</h1>
         </div>
 
-        <SurchargeBanner adjustments={dateAdjustments} />
+        {/* Tab Switcher */}
+        <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 p-1 bg-slate-100 rounded-xl w-fit">
+          <button
+            onClick={() => setActiveTab('room')}
+            className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg text-[13px] sm:text-[14px] font-semibold transition-all ${activeTab === 'room'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+              }`}
+          >
+            Tính tiền phòng
+          </button>
+          <button
+            onClick={() => setActiveTab('items')}
+            className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg text-[13px] sm:text-[14px] font-semibold transition-all ${activeTab === 'items'
+              ? 'bg-white text-slate-900 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+              }`}
+          >
+            Bồi thường vật dụng
+          </button>
+        </div>
 
-        <div className="space-y-4 sm:space-y-8">
-          <section className="bg-white/90 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-lg shadow-slate-200/50 border border-slate-200/80 overflow-visible relative z-30">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y divide-zinc-200 md:divide-zinc-200 xl:divide-y-0 xl:divide-x">
-              <BranchDropdown
-                branches={branches}
-                selectedBranchId={selectedBranchId}
-                showDropdown={showBranchDropdown}
-                onToggle={() => setShowBranchDropdown(!showBranchDropdown)}
-                onSelect={(id) => setSelectedBranchId(id)}
-              />
-              <RoomDropdown
-                roomTypes={filteredRoomTypes}
-                selectedRoomId={selectedRoomId}
-                showDropdown={showRoomDropdown}
-                onToggle={() => setShowRoomDropdown(!showRoomDropdown)}
-                onSelect={(id) => setSelectedRoomId(id)}
-                formatCurrency={formatCurrency}
-              />
-              <DateRangePicker
-                checkIn={checkIn}
-                checkOut={checkOut}
-                showDatePicker={showDatePicker}
-                calculation={calculation}
-                onToggle={(type) => setShowDatePicker(showDatePicker === type ? null : type)}
-                onChange={(type, date) => {
-                  if (type === 'checkIn') setCheckIn(date);
-                  else setCheckOut(date);
-                }}
-                onClose={() => setShowDatePicker(null)}
-              />
-              <GlobalAdjustmentControl
-                globalAdjustment={globalAdjustment}
-                showDropdown={showGlobalAdjTypeDropdown}
-                onToggleDropdown={() => setShowGlobalAdjTypeDropdown(!showGlobalAdjTypeDropdown)}
-                onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
-                onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type })}
-                onAmountChange={(amount) => setGlobalAdjustment({ ...globalAdjustment, amount })}
-                onTogglePercentage={() => setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })}
-              />
-            </div>
-          </section>
+        {activeTab === 'room' ? (
+          <>
+            <SurchargeBanner adjustments={dateAdjustments} />
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <div className="lg:col-span-5">
-              <PriceSummary
-                calculation={calculation}
-                globalAdjustment={globalAdjustment}
-                includeVAT={includeVAT}
-                vatRate={vatRate}
-                showNightlyDetails={showNightlyDetails}
-                onToggleNightlyDetails={() => setShowNightlyDetails(!showNightlyDetails)}
-                onToggleVAT={(checked) => setIncludeVAT(checked)}
-                onVatRateChange={(rate) => setVatRate(rate)}
-                formatCurrency={formatCurrency}
-                selectedEarlyLateOptions={selectedEarlyLateOptions}
-                onToggleEarlyLateOption={toggleEarlyLateOption}
-              />
+            <div className="space-y-4 sm:space-y-8">
+              <section className="bg-white/90 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-lg shadow-slate-200/50 border border-slate-200/80 overflow-visible relative z-30">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y divide-zinc-200 md:divide-zinc-200 xl:divide-y-0 xl:divide-x">
+                  <BranchDropdown
+                    branches={branches}
+                    selectedBranchId={selectedBranchId}
+                    showDropdown={showBranchDropdown}
+                    onToggle={() => setShowBranchDropdown(!showBranchDropdown)}
+                    onSelect={(id) => setSelectedBranchId(id)}
+                  />
+                  <RoomDropdown
+                    roomTypes={filteredRoomTypes}
+                    selectedRoomId={selectedRoomId}
+                    showDropdown={showRoomDropdown}
+                    onToggle={() => setShowRoomDropdown(!showRoomDropdown)}
+                    onSelect={(id) => setSelectedRoomId(id)}
+                    formatCurrency={formatCurrency}
+                  />
+                  <DateRangePicker
+                    checkIn={checkIn}
+                    checkOut={checkOut}
+                    showDatePicker={showDatePicker}
+                    calculation={calculation}
+                    onToggle={(type) => setShowDatePicker(showDatePicker === type ? null : type)}
+                    onChange={(type, date) => {
+                      if (type === 'checkIn') setCheckIn(date);
+                      else setCheckOut(date);
+                    }}
+                    onClose={() => setShowDatePicker(null)}
+                  />
+                  <GlobalAdjustmentControl
+                    globalAdjustment={globalAdjustment}
+                    showDropdown={showGlobalAdjTypeDropdown}
+                    onToggleDropdown={() => setShowGlobalAdjTypeDropdown(!showGlobalAdjTypeDropdown)}
+                    onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
+                    onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type })}
+                    onAmountChange={(amount) => setGlobalAdjustment({ ...globalAdjustment, amount })}
+                    onTogglePercentage={() => setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })}
+                  />
+                </div>
+              </section>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div className="lg:col-span-5">
+                  <PriceSummary
+                    calculation={calculation}
+                    globalAdjustment={globalAdjustment}
+                    includeVAT={includeVAT}
+                    vatRate={vatRate}
+                    showNightlyDetails={showNightlyDetails}
+                    onToggleNightlyDetails={() => setShowNightlyDetails(!showNightlyDetails)}
+                    onToggleVAT={(checked) => setIncludeVAT(checked)}
+                    onVatRateChange={(rate) => setVatRate(rate)}
+                    formatCurrency={formatCurrency}
+                    selectedEarlyLateOptions={selectedEarlyLateOptions}
+                    onToggleEarlyLateOption={toggleEarlyLateOption}
+                  />
+                </div>
+                <div className="lg:col-span-7">
+                  <ComparisonPanel
+                    comparisons={comparisons}
+                    branches={branches}
+                    roomTypes={roomTypes}
+                    compareBranchIds={compareBranchIds}
+                    compareRoomIds={compareRoomIds}
+                    showCompareFilter={showCompareFilter}
+                    filterTab={filterTab}
+                    selectedRoomId={selectedRoomId}
+                    onToggleFilter={() => setShowCompareFilter(!showCompareFilter)}
+                    onCloseFilter={() => setShowCompareFilter(false)}
+                    onSetFilterTab={(tab) => setFilterTab(tab)}
+                    onToggleBranchFilter={(id) => setCompareBranchIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                    onToggleRoomFilter={(id) => setCompareRoomIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                    onSelectAll={(tab) => {
+                      if (tab === 'branch') setCompareBranchIds(branches.map(b => b.id));
+                      else setCompareRoomIds(roomTypes.map(r => r.id));
+                    }}
+                    onDeselectAll={(tab) => {
+                      if (tab === 'branch') setCompareBranchIds([]);
+                      else setCompareRoomIds([]);
+                    }}
+                    formatCurrency={formatCurrency}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="lg:col-span-7">
-              <ComparisonPanel
-                comparisons={comparisons}
-                branches={branches}
-                roomTypes={roomTypes}
-                compareBranchIds={compareBranchIds}
-                compareRoomIds={compareRoomIds}
-                showCompareFilter={showCompareFilter}
-                filterTab={filterTab}
-                selectedRoomId={selectedRoomId}
-                onToggleFilter={() => setShowCompareFilter(!showCompareFilter)}
-                onCloseFilter={() => setShowCompareFilter(false)}
-                onSetFilterTab={(tab) => setFilterTab(tab)}
-                onToggleBranchFilter={(id) => setCompareBranchIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                onToggleRoomFilter={(id) => setCompareRoomIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                onSelectAll={(tab) => {
-                  if (tab === 'branch') setCompareBranchIds(branches.map(b => b.id));
-                  else setCompareRoomIds(roomTypes.map(r => r.id));
-                }}
-                onDeselectAll={(tab) => {
-                  if (tab === 'branch') setCompareBranchIds([]);
-                  else setCompareRoomIds([]);
-                }}
-                formatCurrency={formatCurrency}
-              />
-            </div>
+          </>
+        ) : (
+          <div className="max-w-[1600px] mx-auto">
+            <ItemCompensation
+              items={items}
+              selectedQuantities={selectedQuantities}
+              onChangeQuantity={onChangeQuantity}
+              formatCurrency={formatCurrency}
+            />
           </div>
-        </div>
+        )}
       </main>
       <footer className="max-w-5xl mx-auto px-4 py-8 text-center">
         <p className="text-sm text-slate-400">© 2026 Hotel Price Calculator. Built for efficiency.</p>
