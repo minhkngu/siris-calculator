@@ -147,27 +147,29 @@ export function ComparisonPanel({
                                             </button>
                                         ))
                                     ) : (
-                                        roomTypes.map(room => {
-                                            const branch = branches.find(b => b.id === room.branchId);
-                                            return (
-                                                <button
-                                                    key={room.id}
-                                                    onClick={() => onToggleRoomFilter(room.id)}
-                                                    className={cn(
-                                                        "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[12px] transition-all",
-                                                        compareRoomIds.includes(room.id)
-                                                            ? "bg-blue-50 text-blue-700 font-semibold"
-                                                            : "text-slate-600 hover:bg-slate-50"
-                                                    )}
-                                                >
-                                                    <div className="flex items-center gap-2">
-                                                        <span>{room.name}</span>
-                                                        <span className="text-[10px] text-slate-400">{branch?.name}</span>
-                                                    </div>
-                                                    {compareRoomIds.includes(room.id) && <Check size={11} />}
-                                                </button>
-                                            );
-                                        })
+                                        roomTypes
+                                            .filter(room => compareBranchIds.includes(room.branchId))
+                                            .map(room => {
+                                                const branch = branches.find(b => b.id === room.branchId);
+                                                return (
+                                                    <button
+                                                        key={room.id}
+                                                        onClick={() => onToggleRoomFilter(room.id)}
+                                                        className={cn(
+                                                            "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[12px] transition-all",
+                                                            compareRoomIds.includes(room.id)
+                                                                ? "bg-blue-50 text-blue-700 font-semibold"
+                                                                : "text-slate-600 hover:bg-slate-50"
+                                                        )}
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <span>{room.name}</span>
+                                                            <span className="text-[10px] text-slate-400">{branch?.name}</span>
+                                                        </div>
+                                                        {compareRoomIds.includes(room.id) && <Check size={11} />}
+                                                    </button>
+                                                );
+                                            })
                                     )}
                                 </div>
                             </div>
