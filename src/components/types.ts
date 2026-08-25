@@ -87,3 +87,33 @@ export interface Item {
     quantity: number;
     unit_price: number;
 }
+
+export interface SelectedRoomItem {
+    id: string;
+    branchId: string;
+    roomId: string;
+    checkIn: string;
+    checkOut: string;
+    earlyLateOptions: Set<EarlyCheckinLateCheckoutType>;
+    isIncluded?: boolean;
+}
+
+export interface MultiRoomCalculationItem {
+    item: SelectedRoomItem;
+    room: RoomType | undefined;
+    branch: Branch | undefined;
+    calculation: CalculationResult | null;
+}
+
+export interface MultiRoomTotalSummary {
+    items: MultiRoomCalculationItem[];
+    totalRooms: number;
+    totalNights: number;
+    totalBase: number;
+    totalStayDiscounts: number;
+    totalEarlyLate: number;
+    globalAdjustmentValue: number;
+    vatValue: number;
+    finalTotal: number;
+    deposit: number;
+}

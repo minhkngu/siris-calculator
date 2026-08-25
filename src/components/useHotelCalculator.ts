@@ -188,3 +188,119 @@ export function useComparisons(
             .sort((a, b) => (a.calculation?.finalTotal || 0) - (b.calculation?.finalTotal || 0));
     }, [calculation, roomTypes, branches, compareBranchIds, compareRoomIds, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, earlyLateOptions]);
 }
+
+export function calculateMultiRoomLogic(
+    selectedRooms: import('./types').SelectedRoomItem[],
+    roomTypes: RoomType[],
+    branches: { id: string; name: string; address?: string }[],
+    dateAdjustments: DateAdjustment[],
+    globalAdjustment: GlobalAdjustment,
+    stayDiscounts: StayDiscount[],
+    includeVAT: boolean,
+    vatRate: number
+): import('./types').MultiRoomTotalSummary {
+    const zeroGlobalAdj: GlobalAdjustment = { type: 'discount', amount: 0, isPercentage: false };
+
+    let totalBase = 0;
+    let totalStayDiscounts = 0;
+    let totalEarlyLate = 0;
+    let totalNights = 0;
+    let includedRoomsCount = 0;
+
+    const items: import('./types').MultiRoomCalculationItem[] = selectedRooms.map(item => {
+        const isIncluded = item.isIncluded !== false; // default to true if undefined
+        const room = roomTypes.find(r => r.id === item.roomId);
+        const branch = branches.find(b => b.id === item.branchId);
+
+        let calculation: CalculationResult | null = null;
+        if (room && item.checkIn && item.checkOut) {
+            calculation = calculateForRoomLogic(
+                room,
+                item.checkIn,
+                item.checkOut,
+                dateAdjustments,
+                zeroGlobalAdj,
+                stayDiscounts,
+                false, // Don't apply VAT at per-room level, apply overall
+                0,
+                item.earlyLateOptions
+            );
+
+            if (calculation && isIncluded) {
+                totalBase += calculation.totalBase;
+                totalStayDiscounts += calculation.stayDiscountValue;
+                totalEarlyLate += calculation.earlyLateTotal;
+                totalNights += calculation.nights.length;
+                includedRoomsCount++;
+            }
+        }
+
+        return {
+            item,
+            room,
+            branch,
+            calculation
+        };
+    });
+
+    let combinedSubtotal = totalBase - totalStayDiscounts + totalEarlyLate;
+
+    // Apply global adjustment on combined subtotal
+    const globalValue = globalAdjustment.isPercentage
+        ? Math.round(combinedSubtotal * globalAdjustment.amount / 100)
+        : globalAdjustment.amount;
+
+    let finalBeforeVat = combinedSubtotal;
+    if (globalAdjustment.type === 'surcharge') {
+        finalBeforeVat += globalValue;
+    } else {
+        finalBeforeVat -= globalValue;
+    }
+    if (finalBeforeVat < 0) finalBeforeVat = 0;
+
+    let vatValue = 0;
+    let finalTotal = finalBeforeVat;
+    if (includeVAT) {
+        vatValue = Math.round(finalBeforeVat * (vatRate / 100));
+        finalTotal += vatValue;
+    }
+
+    const deposit = Math.round(finalTotal * 0.5);
+
+    return {
+        items,
+        totalRooms: includedRoomsCount,
+        totalNights,
+        totalBase,
+        totalStayDiscounts,
+        totalEarlyLate,
+        globalAdjustmentValue: globalValue,
+        vatValue,
+        finalTotal,
+        deposit
+    };
+}
+
+export function useMultiRoomCalculator(
+    selectedRooms: import('./types').SelectedRoomItem[],
+    roomTypes: RoomType[],
+    branches: { id: string; name: string; address?: string }[],
+    dateAdjustments: DateAdjustment[],
+    globalAdjustment: GlobalAdjustment,
+    stayDiscounts: StayDiscount[],
+    includeVAT: boolean,
+    vatRate: number
+) {
+    return useMemo(() => {
+        return calculateMultiRoomLogic(
+            selectedRooms,
+            roomTypes,
+            branches,
+            dateAdjustments,
+            globalAdjustment,
+            stayDiscounts,
+            includeVAT,
+            vatRate
+        );
+    }, [selectedRooms, roomTypes, branches, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate]);
+}

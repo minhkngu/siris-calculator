@@ -67,8 +67,8 @@ export function DateRangePicker({ checkIn, checkOut, showDatePicker, calculation
                             <DayPicker
                                 mode="single"
                                 captionLayout="dropdown"
-                                fromYear={2024}
-                                toYear={2030}
+                                fromYear={2020}
+                                toYear={2035}
                                 selected={showDatePicker === 'checkIn' ? (checkIn ? parseISO(checkIn) : undefined) : (checkOut ? parseISO(checkOut) : undefined)}
                                 onSelect={(date) => {
                                     if (date) {
@@ -79,6 +79,7 @@ export function DateRangePicker({ checkIn, checkOut, showDatePicker, calculation
                                 locale={vi}
                                 disabled={showDatePicker === 'checkOut' && checkIn ? { before: addDays(parseISO(checkIn), 1) } : undefined}
                             />
+
                         </motion.div>
                     </>
                 )}

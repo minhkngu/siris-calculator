@@ -11,9 +11,16 @@ Phần mềm quản lý nội bộ dành cho Siris Residences — hỗ trợ tí
 - **Giảm giá theo số đêm**: Tự động chọn ưu đãi tốt nhất dựa trên thời gian lưu trú.
 - **Điều chỉnh tổng đơn**: Phụ thu/giảm giá toàn bộ hóa đơn (% hoặc số tiền).
 - **VAT**: Tùy chọn bao gồm thuế GTGT, có thể điều chỉnh %.
-- **Check-in sớm / Check-out trễ**: 4 tùy chọn phí (12:30, 13:00, trước 13:00, trước 18:00).
+- **Check-in sớm / Check-out trễ**: 5 tùy chọn phí — từ 8:00 (50% giá đêm trước), từ 12:30, từ 13:00, trả phòng trước 13:00, trả phòng trước 18:00 (80% giá đêm cuối).
 - **So sánh lựa chọn**: Bảng so sánh giá giữa các phòng/chi nhánh, hiển thị chênh lệch.
 - **Đặt cọc**: Tự động tính 50% đặt cọc.
+
+### Tính tiền nhiều phòng
+- **Chế độ nhiều phòng**: Chuyển đổi giữa "Phòng đơn" và "Nhiều phòng".
+- **Thêm / nhân bản / xoá phòng**: Cấu hình tối đa 10 phòng cùng lúc, mỗi phòng có chi nhánh, loại phòng, thời gian lưu trú và dịch vụ riêng.
+- **Tổng hợp tự động**: Gộp tổng tiền gốc, giảm giá lưu trú, phí nhận sớm/trả trễ, điều chỉnh tổng đơn, VAT và đặt cọc của toàn bộ các phòng.
+- **Tick để tính tiền**: Bỏ chọn từng phòng nếu không muốn tính vào tổng hoá đơn.
+- **Sao chép bảng báo giá**: Tự động tạo và sao chép văn bản báo giá chi tiết các phòng.
 
 ### Bồi thường vật dụng
 - **Tab riêng biệt**: Chuyển đổi giữa "Tính tiền phòng" và "Bồi thường vật dụng".
@@ -47,7 +54,9 @@ src/
 │   ├── ComparisonPanel.tsx     # So sánh lựa chọn
 │   ├── EarlyLateOptions.tsx    # Check-in sớm / Check-out trễ
 │   ├── SurchargeBanner.tsx     # Banner phụ thu
-│   └── FetchErrorView.tsx      # Trang lỗi
+│   ├── FetchErrorView.tsx      # Trang lỗi
+│   ├── MultiRoomSelector.tsx   # Chọn & cấu hình nhiều phòng
+│   └── MultiRoomSummary.tsx    # Tổng hợp & sao chép báo giá nhiều phòng
 └── lib/
     ├── supabase.ts             # Supabase client
     └── utils.ts                # cn() utility

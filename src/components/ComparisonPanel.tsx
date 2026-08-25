@@ -18,6 +18,7 @@ interface ComparisonPanelProps {
     onToggleRoomFilter: (roomId: string) => void;
     onSelectAll: (tab: 'branch' | 'room') => void;
     onDeselectAll: (tab: 'branch' | 'room') => void;
+    onSelectRoom?: (branchId: string, roomId: string) => void;
     formatCurrency: (amount: number) => string;
 }
 
@@ -46,6 +47,7 @@ export function ComparisonPanel({
     onToggleRoomFilter,
     onSelectAll,
     onDeselectAll,
+    onSelectRoom,
     formatCurrency,
 }: ComparisonPanelProps) {
     return (
@@ -100,36 +102,28 @@ export function ComparisonPanel({
                                     </button>
                                 </div>
 
-                                <div className="p-1 border-b border-slate-100 mb-1">
-                                    <button
-                                        onClick={() => {
-                                            const allSelected = filterTab === 'branch'
-                                                ? compareBranchIds.length === branches.length
-                                                : compareRoomIds.length === roomTypes.length;
-                                            if (allSelected) {
-                                                onDeselectAll(filterTab);
-                                            } else {
-                                                onSelectAll(filterTab);
-                                            }
-                                        }}
-                                        className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all border w-full bg-slate-50 border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600"
-                                    >
-                                        {(
-                                            filterTab === 'branch'
-                                                ? compareBranchIds.length === branches.length
-                                                : compareRoomIds.length === roomTypes.length
-                                        ) ? (
-                                            <>
-                                                <Check size={10} className="text-blue-600" />
-                                                <span className="text-blue-600">Đã chọn tất cả</span>
-                                            </>
-                                        ) : (
-                                            <span>Chọn tất cả</span>
-                                        )}
-                                    </button>
+                                <div className="flex justify-between items-center px-1 mb-1.5">
+                                    <span className="text-[10px] text-slate-400 font-medium">
+                                        {filterTab === 'branch' ? 'Chọn cơ sở hiển thị' : 'Chọn loại phòng hiển thị'}
+                                    </span>
+                                    <div className="flex gap-2 text-[10px]">
+                                        <button
+                                            onClick={() => onSelectAll(filterTab)}
+                                            className="text-blue-600 hover:underline font-medium"
+                                        >
+                                            Tất cả
+                                        </button>
+                                        <span className="text-slate-300">|</span>
+                                        <button
+                                            onClick={() => onDeselectAll(filterTab)}
+                                            className="text-slate-400 hover:text-slate-600 font-medium"
+                                        >
+                                            Bỏ chọn
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div className="space-y-0.5 max-h-[240px] overflow-y-auto custom-scrollbar">
+                                <div className="max-h-48 overflow-y-auto space-y-0.5 custom-scrollbar">
                                     {filterTab === 'branch' ? (
                                         branches.map(branch => (
                                             <button
@@ -205,8 +199,9 @@ export function ComparisonPanel({
                                         "rounded-lg sm:rounded-xl border transition-all p-1.5 sm:p-2",
                                         isSelected
                                             ? "bg-blue-50/80 border-blue-200 shadow-sm shadow-blue-100"
-                                            : "bg-white border-slate-200"
+                                            : "bg-white border-slate-200 cursor-pointer hover:border-indigo-200 hover:bg-slate-50/60"
                                     )}
+                                    onClick={() => onSelectRoom && onSelectRoom(room.branchId, room.id)}
                                 >
                                     <div className="flex items-center justify-between">
                                         <span className={cn(
