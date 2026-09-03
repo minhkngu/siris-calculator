@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { format, addDays } from 'date-fns';
+import { format, addDays, parseISO, getDay, isValid } from 'date-fns';
 import { SurchargeBanner } from './components/SurchargeBanner';
 import { BranchDropdown } from './components/BranchDropdown';
 import { RoomDropdown } from './components/RoomDropdown';
@@ -76,6 +76,12 @@ export default function App() {
   }, []);
 
   const toggleEarlyLateOption = useCallback((type: EarlyCheckinLateCheckoutType) => {
+    if (type === 'late_1800') {
+      const coDate = parseISO(checkOut);
+      if (isValid(coDate) && (getDay(coDate) === 5 || getDay(coDate) === 6)) {
+        return; // Không cho phép tick checkout trễ 18:00 vào Thứ 6, Thứ 7
+      }
+    }
     setSelectedEarlyLateOptions(prev => {
       const next = new Set(prev);
       if (next.has(type)) {
@@ -85,7 +91,23 @@ export default function App() {
       }
       return next;
     });
-  }, []);
+  }, [checkOut]);
+
+  // Tự động bỏ chọn late_1800 nếu ngày check-out rơi vào Thứ 6 hoặc Thứ 7
+  useEffect(() => {
+    if (!checkOut) return;
+    const coDate = parseISO(checkOut);
+    if (isValid(coDate) && (getDay(coDate) === 5 || getDay(coDate) === 6)) {
+      setSelectedEarlyLateOptions(prev => {
+        if (prev.has('late_1800')) {
+          const next = new Set(prev);
+          next.delete('late_1800');
+          return next;
+        }
+        return prev;
+      });
+    }
+  }, [checkOut]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -255,7 +277,19 @@ export default function App() {
   const handleUpdateMultiRoom = useCallback((index: number, updates: Partial<SelectedRoomItem>) => {
     setMultiRooms(prev => {
       const copy = [...prev];
-      copy[index] = { ...copy[index], ...updates };
+      const current = copy[index];
+      if (!current) return prev;
+      const updated = { ...current, ...updates };
+      // Nếu checkOut thay đổi sang Thứ 6 hoặc Thứ 7, tự động loại bỏ late_1800
+      if (updated.checkOut && updated.earlyLateOptions?.has('late_1800')) {
+        const coDate = parseISO(updated.checkOut);
+        if (isValid(coDate) && (getDay(coDate) === 5 || getDay(coDate) === 6)) {
+          const nextSet = new Set(updated.earlyLateOptions);
+          nextSet.delete('late_1800');
+          updated.earlyLateOptions = nextSet;
+        }
+      }
+      copy[index] = updated;
       return copy;
     });
   }, []);
@@ -264,6 +298,14 @@ export default function App() {
     setMultiRooms(prev => {
       const copy = [...prev];
       const target = copy[index];
+      if (!target) return prev;
+      // Không cho phép chọn late_1800 nếu ngày check-out là Thứ 6 hoặc Thứ 7
+      if (type === 'late_1800' && target.checkOut) {
+        const coDate = parseISO(target.checkOut);
+        if (isValid(coDate) && (getDay(coDate) === 5 || getDay(coDate) === 6)) {
+          return prev;
+        }
+      }
       const nextSet = new Set(target.earlyLateOptions);
       if (nextSet.has(type)) {
         nextSet.delete(type);
@@ -411,6 +453,7 @@ export default function App() {
                       formatCurrency={formatCurrency}
                       selectedEarlyLateOptions={selectedEarlyLateOptions}
                       onToggleEarlyLateOption={toggleEarlyLateOption}
+                      checkOut={checkOut}
                     />
                   </div>
                   <div className="lg:col-span-7">

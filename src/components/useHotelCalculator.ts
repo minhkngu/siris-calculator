@@ -27,7 +27,35 @@ export function calculateForRoomLogic(
     const previousNightDate = addDays(start, -1);
     const previousNightDayOfWeek = getDay(previousNightDate);
     const previousNightIsWeekend = previousNightDayOfWeek === 5 || previousNightDayOfWeek === 6;
-    const previousNightPrice = previousNightIsWeekend ? room.weekendPrice : room.weekdayPrice;
+    const previousNightBasePrice = previousNightIsWeekend ? room.weekendPrice : room.weekdayPrice;
+    const previousNightDateStr = format(previousNightDate, 'yyyy-MM-dd');
+    const previousNightAdjustments = dateAdjustments.filter(adj => adj.date === previousNightDateStr);
+    let previousNightPrice = previousNightBasePrice;
+    previousNightAdjustments.forEach(adj => {
+        const value = adj.isPercentage ? Math.round(previousNightBasePrice * adj.amount / 100) : adj.amount;
+        if (adj.type === 'surcharge') {
+            previousNightPrice += value;
+        } else {
+            previousNightPrice -= value;
+        }
+    });
+
+    // Calculate next night price (for late check-out before 18:00 - the night of check-out day)
+    const nextNightDate = end;
+    const nextNightDayOfWeek = getDay(nextNightDate);
+    const nextNightIsWeekend = nextNightDayOfWeek === 5 || nextNightDayOfWeek === 6;
+    const nextNightBasePrice = nextNightIsWeekend ? room.weekendPrice : room.weekdayPrice;
+    const nextNightDateStr = format(nextNightDate, 'yyyy-MM-dd');
+    const nextNightAdjustments = dateAdjustments.filter(adj => adj.date === nextNightDateStr);
+    let nextNightPrice = nextNightBasePrice;
+    nextNightAdjustments.forEach(adj => {
+        const value = adj.isPercentage ? Math.round(nextNightBasePrice * adj.amount / 100) : adj.amount;
+        if (adj.type === 'surcharge') {
+            nextNightPrice += value;
+        } else {
+            nextNightPrice -= value;
+        }
+    });
 
     let totalBase = 0;
     const breakdown = nights.map(date => {
@@ -93,7 +121,7 @@ export function calculateForRoomLogic(
     // Calculate early check-in / late check-out fees
     let earlyLateTotal = 0;
     if (earlyLateOptions.has('early_0800')) {
-        // 50% of base price of the previous night (the night before check-in)
+        // 50% of price of the previous night (the night before check-in)
         earlyLateTotal += Math.round(previousNightPrice * 50 / 100);
     }
     if (earlyLateOptions.has('early_1230')) {
@@ -106,10 +134,11 @@ export function calculateForRoomLogic(
         earlyLateTotal += 100000;
     }
     if (earlyLateOptions.has('late_1800')) {
-        // 80% of base price of the last night
-        const lastNight = breakdown[breakdown.length - 1];
-        if (lastNight) {
-            earlyLateTotal += Math.round(lastNight.basePrice * 80 / 100);
+        const checkoutDayOfWeek = getDay(end);
+        const isWeekendCheckout = checkoutDayOfWeek === 5 || checkoutDayOfWeek === 6;
+        if (!isWeekendCheckout) {
+            // 80% of price of the next night (the night of check-out day), not allowed on Fri/Sat
+            earlyLateTotal += Math.round(nextNightPrice * 80 / 100);
         }
     }
 
@@ -131,6 +160,7 @@ export function calculateForRoomLogic(
         stayDiscountValue,
         earlyLateTotal,
         previousNightPrice,
+        nextNightPrice,
         vatValue,
         finalTotal,
         deposit

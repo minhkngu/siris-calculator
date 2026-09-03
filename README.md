@@ -11,7 +11,7 @@ Phần mềm quản lý nội bộ dành cho Siris Residences — hỗ trợ tí
 - **Giảm giá theo số đêm**: Tự động chọn ưu đãi tốt nhất dựa trên thời gian lưu trú.
 - **Điều chỉnh tổng đơn**: Phụ thu/giảm giá toàn bộ hóa đơn (% hoặc số tiền).
 - **VAT**: Tùy chọn bao gồm thuế GTGT, có thể điều chỉnh %.
-- **Check-in sớm / Check-out trễ**: 5 tùy chọn phí — từ 8:00 (50% giá đêm trước), từ 12:30, từ 13:00, trả phòng trước 13:00, trả phòng trước 18:00 (80% giá đêm cuối).
+- **Check-in sớm / Check-out trễ**: 5 tùy chọn phí — từ 8:00 (50% giá đêm trước), từ 12:30, từ 13:00, trả phòng trước 13:00, trả phòng trước 18:00 (80% giá đêm sau, không áp dụng trả phòng vào Thứ 6 & Thứ 7).
 - **So sánh lựa chọn**: Bảng so sánh giá giữa các phòng/chi nhánh, hiển thị chênh lệch.
 - **Đặt cọc**: Tự động tính 50% đặt cọc.
 

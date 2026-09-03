@@ -17,6 +17,7 @@ interface PriceSummaryProps {
     formatCurrency: (amount: number) => string;
     selectedEarlyLateOptions: Set<EarlyCheckinLateCheckoutType>;
     onToggleEarlyLateOption: (type: EarlyCheckinLateCheckoutType) => void;
+    checkOut?: string;
 }
 
 export function PriceSummary({
@@ -31,6 +32,7 @@ export function PriceSummary({
     formatCurrency,
     selectedEarlyLateOptions,
     onToggleEarlyLateOption,
+    checkOut,
 }: PriceSummaryProps) {
     return (
         <section className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-4 sm:p-6 transition-all">
@@ -170,6 +172,7 @@ export function PriceSummary({
                         onToggle={onToggleEarlyLateOption}
                         calculation={calculation}
                         formatCurrency={formatCurrency}
+                        checkOut={checkOut}
                     />
 
                     <div className="w-full h-px bg-slate-100 mb-4 sm:mb-5"></div>

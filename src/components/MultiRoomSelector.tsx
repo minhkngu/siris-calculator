@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Plus, Trash2, Copy, Building, Hotel, Calendar, Clock, ChevronDown, ChevronUp, Layers, Check } from 'lucide-react';
+import { Plus, Trash2, Copy, Building, Hotel, Calendar, Clock, ChevronDown, ChevronUp, Layers, Check, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Branch, RoomType, SelectedRoomItem, EarlyCheckinLateCheckoutType, EARLY_LATE_OPTIONS, DateAdjustment, MultiRoomTotalSummary } from './types';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { cn } from '../lib/utils';
-import { format, parseISO, addDays } from 'date-fns';
+import { format, parseISO, addDays, getDay, isValid } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
 interface MultiRoomSelectorProps {
@@ -447,15 +447,20 @@ export function MultiRoomSelector({
                                     >
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200/60">
                                             {EARLY_LATE_OPTIONS.map((option) => {
-                                                const isSelected = Boolean(roomItem.earlyLateOptions && typeof roomItem.earlyLateOptions.has === 'function' && roomItem.earlyLateOptions.has(option.type));
+                                                const checkOutDate = roomItem.checkOut ? parseISO(roomItem.checkOut) : null;
+                                                const isWeekendCheckout = checkOutDate && isValid(checkOutDate)
+                                                    ? (getDay(checkOutDate) === 5 || getDay(checkOutDate) === 6)
+                                                    : false;
+                                                const isLate1800Disabled = option.type === 'late_1800' && isWeekendCheckout;
+                                                const isSelected = !isLate1800Disabled && Boolean(roomItem.earlyLateOptions && typeof roomItem.earlyLateOptions.has === 'function' && roomItem.earlyLateOptions.has(option.type));
+
                                                 let displayPrice = '';
                                                 if (option.type === 'early_0800') {
                                                     const basePrice = itemCalc?.previousNightPrice || currentRoom?.weekdayPrice || 0;
                                                     const value = Math.round(basePrice * (option.percentageRate || 50) / 100);
                                                     displayPrice = formatCurrency(value);
                                                 } else if (option.type === 'late_1800') {
-                                                    const lastNight = itemCalc?.nights?.[itemCalc.nights.length - 1];
-                                                    const basePrice = lastNight?.basePrice || currentRoom?.weekdayPrice || 0;
+                                                    const basePrice = itemCalc?.nextNightPrice || currentRoom?.weekdayPrice || 0;
                                                     const value = Math.round(basePrice * (option.percentageRate || 80) / 100);
                                                     displayPrice = formatCurrency(value);
                                                 } else {
@@ -465,26 +470,53 @@ export function MultiRoomSelector({
                                                 return (
                                                     <div
                                                         key={option.type}
-                                                        onClick={() => onToggleEarlyLate(index, option.type)}
+                                                        onClick={() => {
+                                                            if (!isLate1800Disabled) {
+                                                                onToggleEarlyLate(index, option.type);
+                                                            }
+                                                        }}
                                                         className={cn(
-                                                            "p-2.5 rounded-lg border text-xs cursor-pointer flex items-center justify-between transition-all select-none",
-                                                            isSelected
-                                                                ? "bg-blue-50/80 border-blue-500 text-blue-900 shadow-sm"
-                                                                : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
+                                                            "p-2.5 rounded-lg border text-xs transition-all select-none flex items-center justify-between",
+                                                            isLate1800Disabled
+                                                                ? "bg-slate-100/70 border-slate-200 text-slate-400 cursor-not-allowed opacity-65"
+                                                                : isSelected
+                                                                    ? "bg-blue-50/80 border-blue-500 text-blue-900 shadow-sm cursor-pointer"
+                                                                    : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 cursor-pointer"
                                                         )}
                                                     >
                                                         <div className="flex items-center gap-2">
                                                             <div className={cn(
-                                                                "w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition-colors",
-                                                                isSelected ? "bg-blue-600 border-blue-600 text-white" : "border-slate-300 bg-white"
+                                                                "w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition-colors shrink-0",
+                                                                isLate1800Disabled
+                                                                    ? "border-slate-200 bg-slate-200/60 text-transparent"
+                                                                    : isSelected
+                                                                        ? "bg-blue-600 border-blue-600 text-white"
+                                                                        : "border-slate-300 bg-white"
                                                             )}>
                                                                 {isSelected ? '✓' : ''}
                                                             </div>
-                                                            <span className="font-medium">{option.label}</span>
+                                                            <div className="flex flex-col">
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    <span className={cn("font-medium", isLate1800Disabled && "text-slate-400 line-through decoration-slate-300")}>
+                                                                        {option.label}
+                                                                    </span>
+                                                                    {isLate1800Disabled && (
+                                                                        <span className="text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                                                            Không áp dụng T6, T7
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <span className="font-bold text-slate-600 text-[11px] shrink-0">
-                                                            +{displayPrice}
-                                                        </span>
+                                                        {isLate1800Disabled ? (
+                                                            <span className="text-slate-400 font-medium text-[11px] shrink-0">
+                                                                Không hỗ trợ
+                                                            </span>
+                                                        ) : (
+                                                            <span className="font-bold text-slate-600 text-[11px] shrink-0">
+                                                                +{displayPrice}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 );
                                             })}

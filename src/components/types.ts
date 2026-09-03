@@ -68,6 +68,7 @@ export interface CalculationResult {
     stayDiscountValue: number;
     earlyLateTotal: number;
     previousNightPrice: number;
+    nextNightPrice: number;
     vatValue: number;
     finalTotal: number;
     deposit: number;
