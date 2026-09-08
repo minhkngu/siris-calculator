@@ -88,3 +88,8 @@ date_adjustments: id, date, type, amount, is_percentage/isPercentage, note
 
 -- items (vật dụng bồi thường)
 items: id, item_name, kind, quantity, unit_price
+## Kiểm tra code
+
+- `npm run typecheck`: kiểm tra kiểu dữ liệu và khai báo không sử dụng.
+- `npm test`: kiểm tra công thức tính giá phòng (yêu cầu Node.js 22.6+ hỗ trợ `--experimental-strip-types`).
+- `npm run build`: tạo bản production.

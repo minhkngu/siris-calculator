@@ -16,9 +16,8 @@ import { supabase } from './lib/supabase';
 import { Branch, RoomType, DateAdjustment, GlobalAdjustment, StayDiscount, EarlyCheckinLateCheckoutType, Item, SelectedRoomItem } from './components/types';
 import { Hotel, Layers } from 'lucide-react';
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-};
+const currencyFormatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+const formatCurrency = (amount: number) => currencyFormatter.format(amount);
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'room' | 'items'>('room');
@@ -30,8 +29,8 @@ export default function App() {
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
 
-  const [checkIn, setCheckIn] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-  const [checkOut, setCheckOut] = useState<string>(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
+  const [checkIn, setCheckIn] = useState<string>(() => format(new Date(), 'yyyy-MM-dd'));
+  const [checkOut, setCheckOut] = useState<string>(() => format(addDays(new Date(), 1), 'yyyy-MM-dd'));
   const [showDatePicker, setShowDatePicker] = useState<'checkIn' | 'checkOut' | null>(null);
 
   const [dateAdjustments, setDateAdjustments] = useState<DateAdjustment[]>([]);
@@ -172,13 +171,11 @@ export default function App() {
       setItems(iDataMapped);
 
       setCompareBranchIds((bData || []).map(b => b.id));
-      setCompareRoomIds(rRawData.filter(r => !r.isHidden).map(r => r.id));
+      setCompareRoomIds(rData.map(r => r.id));
 
       if (bData && bData.length > 0) {
         const defaultBranchId = bData[0].id;
-        if (!selectedBranchId || !bData.find(b => b.id === selectedBranchId)) {
-          setSelectedBranchId(defaultBranchId);
-        }
+        setSelectedBranchId(current => bData.some(b => b.id === current) ? current : defaultBranchId);
         const defaultBranchRooms = rData.filter(r => r.branchId === defaultBranchId);
         const defaultRoomId = defaultBranchRooms[0]?.id || '';
 
@@ -497,7 +494,6 @@ export default function App() {
                       rooms={multiRooms}
                       branches={branches}
                       roomTypes={roomTypes}
-                      dateAdjustments={dateAdjustments}
                       summary={multiRoomSummary}
                       onAddRoom={handleAddMultiRoom}
                       onDuplicateRoom={handleDuplicateMultiRoom}

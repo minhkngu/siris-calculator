@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Tag, Check, Copy, CheckCheck, Hotel, Calendar, Sparkles } from 'lucide-react';
+import { Tag, Check, Copy, CheckCheck, Hotel, Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { GlobalAdjustment, MultiRoomTotalSummary } from './types';
 import { format, parseISO } from 'date-fns';

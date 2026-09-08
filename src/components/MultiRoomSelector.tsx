@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Plus, Trash2, Copy, Building, Hotel, Calendar, Clock, ChevronDown, ChevronUp, Layers, Check, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Copy, Building, Hotel, Calendar, Clock, ChevronDown, ChevronUp, Layers, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Branch, RoomType, SelectedRoomItem, EarlyCheckinLateCheckoutType, EARLY_LATE_OPTIONS, DateAdjustment, MultiRoomTotalSummary } from './types';
+import { Branch, RoomType, SelectedRoomItem, EarlyCheckinLateCheckoutType, EARLY_LATE_OPTIONS, MultiRoomTotalSummary } from './types';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { cn } from '../lib/utils';
@@ -12,7 +12,6 @@ interface MultiRoomSelectorProps {
     rooms: SelectedRoomItem[];
     branches: Branch[];
     roomTypes: RoomType[];
-    dateAdjustments: DateAdjustment[];
     summary: MultiRoomTotalSummary;
     onAddRoom: () => void;
     onDuplicateRoom: (index: number) => void;
