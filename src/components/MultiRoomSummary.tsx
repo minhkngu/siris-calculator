@@ -50,8 +50,8 @@ export function MultiRoomSummary({
         if (summary.totalStayDiscounts > 0) {
             text += `• Giảm giá lưu trú dài ngày: -${formatCurrency(summary.totalStayDiscounts)}\n`;
         }
-        if (summary.totalEarlyLate > 0) {
-            text += `• Phí nhận sớm/trả trễ: +${formatCurrency(summary.totalEarlyLate)}\n`;
+        if (summary.totalEarlyLate !== 0) {
+            text += `• Điều chỉnh check-in/check-out: ${summary.totalEarlyLate > 0 ? '+' : ''}${formatCurrency(summary.totalEarlyLate)}\n`;
         }
         if (globalAdjustment.amount > 0) {
             text += `• ${globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'}: ${globalAdjustment.type === 'surcharge' ? '+' : '-'}${formatCurrency(summary.globalAdjustmentValue)}\n`;
@@ -183,10 +183,10 @@ export function MultiRoomSummary({
                     </div>
                 )}
 
-                {summary.totalEarlyLate > 0 && (
+                {summary.totalEarlyLate !== 0 && (
                     <div className="flex justify-between items-center text-blue-700 bg-blue-50/50 p-1.5 sm:p-2 rounded-lg border border-blue-100 text-[11px] sm:text-sm">
-                        <span>Phí nhận sớm / trả trễ</span>
-                        <span className="font-bold">+ {formatCurrency(summary.totalEarlyLate)}</span>
+                        <span>Điều chỉnh check-in/check-out</span>
+                        <span className="font-bold">{summary.totalEarlyLate > 0 ? '+' : ''}{formatCurrency(summary.totalEarlyLate)}</span>
                     </div>
                 )}
 

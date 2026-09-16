@@ -86,6 +86,13 @@ export default function App() {
       if (next.has(type)) {
         next.delete(type);
       } else {
+        if (type === 'checkin_2200') {
+          next.delete('early_0800');
+          next.delete('early_1230');
+          next.delete('early_1300');
+        } else if (type.startsWith('early_')) {
+          next.delete('checkin_2200');
+        }
         next.add(type);
       }
       return next;
@@ -307,6 +314,13 @@ export default function App() {
       if (nextSet.has(type)) {
         nextSet.delete(type);
       } else {
+        if (type === 'checkin_2200') {
+          nextSet.delete('early_0800');
+          nextSet.delete('early_1230');
+          nextSet.delete('early_1300');
+        } else if (type.startsWith('early_')) {
+          nextSet.delete('checkin_2200');
+        }
         nextSet.add(type);
       }
       copy[index] = { ...target, earlyLateOptions: nextSet };

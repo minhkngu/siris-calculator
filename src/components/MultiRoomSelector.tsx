@@ -405,7 +405,7 @@ export function MultiRoomSelector({
                                         )}
                                     >
                                         <Clock size={13} className="text-blue-500" />
-                                        <span>Check-in sớm / Check-out trễ</span>
+                                        <span>Tùy chọn Check-in / Check-out</span>
                                         {roomItem.earlyLateOptions && roomItem.earlyLateOptions.size > 0 && (
                                             <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-bold">
                                                 {roomItem.earlyLateOptions.size}
@@ -454,7 +454,9 @@ export function MultiRoomSelector({
                                                 const isSelected = !isLate1800Disabled && Boolean(roomItem.earlyLateOptions && typeof roomItem.earlyLateOptions.has === 'function' && roomItem.earlyLateOptions.has(option.type));
 
                                                 let displayPrice = '';
-                                                if (option.type === 'early_0800') {
+                                                if (option.type === 'checkin_2200') {
+                                                    displayPrice = formatCurrency(Math.round((itemCalc?.nights[0]?.finalPrice || 0) * 20 / 100));
+                                                } else if (option.type === 'early_0800') {
                                                     const basePrice = itemCalc?.previousNightPrice || currentRoom?.weekdayPrice || 0;
                                                     const value = Math.round(basePrice * (option.percentageRate || 50) / 100);
                                                     displayPrice = formatCurrency(value);
@@ -513,7 +515,7 @@ export function MultiRoomSelector({
                                                             </span>
                                                         ) : (
                                                             <span className="font-bold text-slate-600 text-[11px] shrink-0">
-                                                                +{displayPrice}
+                                                                {option.type === 'checkin_2200' ? '−' : '+'}{displayPrice}
                                                             </span>
                                                         )}
                                                     </div>

@@ -78,3 +78,28 @@ test('multi-room discount cannot produce a negative payable total', () => {
     assert.equal(result.vatValue, 0);
     assert.equal(result.deposit, 0);
 });
+
+test('22:00 check-in discounts only the first adjusted night, before VAT', () => {
+    const adjustments = [{ date: '2026-09-11', type: 'surcharge', amount: 10, isPercentage: true }];
+    const result = calculate('2026-09-11', '2026-09-13', adjustments, noAdjustment, [], true, new Set(['checkin_2200']));
+    assert.equal(result.totalBase, 3150000);
+    assert.equal(result.earlyLateTotal, -330000);
+    assert.equal(result.vatValue, 282000);
+    assert.equal(result.finalTotal, 3102000);
+    assert.equal(result.deposit, 1551000);
+});
+
+test('22:00 check-in excludes early arrival fees but allows late checkout', () => {
+    const result = calculate('2026-09-07', '2026-09-08', [], noAdjustment, [], false,
+        new Set(['checkin_2200', 'early_0800', 'early_1230', 'early_1300', 'late_1300']));
+    assert.equal(result.earlyLateTotal, -100000);
+    assert.equal(result.finalTotal, 900000);
+});
+
+test('multi-room 22:00 discount affects only included rooms and precedes VAT', () => {
+    const item = { id: '1', roomId: 'r1', branchId: 'b1', checkIn: '2026-09-07', checkOut: '2026-09-08', earlyLateOptions: new Set(['checkin_2200']) };
+    const result = calculateMultiRoomLogic([item, { ...item, id: '2', isIncluded: false }], [room], [branch], [], noAdjustment, [], true, 10);
+    assert.equal(result.totalEarlyLate, -200000);
+    assert.equal(result.finalTotal, 880000);
+    assert.equal(result.deposit, 440000);
+});

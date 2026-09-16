@@ -88,15 +88,16 @@ export function calculateForRoomLogic(
     }
 
     // Calculate early check-in / late check-out fees
-    let earlyLateTotal = 0;
-    if (earlyLateOptions.has('early_0800')) {
+    const lateCheckin = earlyLateOptions.has('checkin_2200');
+    let earlyLateTotal = lateCheckin ? -Math.round(breakdown[0].finalPrice * 20 / 100) : 0;
+    if (!lateCheckin && earlyLateOptions.has('early_0800')) {
         // 50% of price of the previous night (the night before check-in)
         earlyLateTotal += Math.round(previousNightPrice * 50 / 100);
     }
-    if (earlyLateOptions.has('early_1230')) {
+    if (!lateCheckin && earlyLateOptions.has('early_1230')) {
         earlyLateTotal += 150000;
     }
-    if (earlyLateOptions.has('early_1300')) {
+    if (!lateCheckin && earlyLateOptions.has('early_1300')) {
         earlyLateTotal += 100000;
     }
     if (earlyLateOptions.has('late_1300')) {

@@ -34,7 +34,7 @@ export function EarlyLateOptions({ selectedOptions, onToggle, calculation, forma
             <div className="flex justify-between items-center mb-3 sm:mb-4 text-slate-700">
                 <div className="flex items-center font-semibold text-[14px] sm:text-[15px]">
                     <Clock className="w-[15px] h-[15px] sm:w-[18px] sm:h-[18px] mr-2 sm:mr-2.5 text-blue-500 shrink-0" />
-                    <span>Check-in sớm / Check-out trễ</span>
+                    <span>Tùy chọn Check-in / Check-out</span>
                 </div>
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
@@ -51,7 +51,9 @@ export function EarlyLateOptions({ selectedOptions, onToggle, calculation, forma
                         const isSelected = !isLate1800Disabled && selectedOptions.has(option.type);
 
                         let displayPrice = '';
-                        if (option.type === 'early_0800') {
+                        if (option.type === 'checkin_2200') {
+                            displayPrice = formatCurrency(Math.round((calculation?.nights[0]?.finalPrice || 0) * 20 / 100));
+                        } else if (option.type === 'early_0800') {
                             const basePrice = calculation?.previousNightPrice || 0;
                             const value = Math.round(basePrice * (option.percentageRate || 50) / 100);
                             displayPrice = formatCurrency(value);
@@ -136,17 +138,17 @@ export function EarlyLateOptions({ selectedOptions, onToggle, calculation, forma
                                             ? 'bg-blue-100 text-blue-700'
                                             : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
                                     )}>
-                                        +{displayPrice}
+                                        {option.type === 'checkin_2200' ? '−' : '+'}{displayPrice}
                                     </div>
                                 )}
                             </div>
                         );
                     })}
 
-                    {calculation && calculation.earlyLateTotal > 0 && (
+                    {calculation && calculation.earlyLateTotal !== 0 && (
                         <div className="flex justify-between items-center text-[14px] pt-2">
-                            <span className="font-semibold text-slate-700">Tổng phí check-in/check-out</span>
-                            <span className="font-bold text-blue-600">+{formatCurrency(calculation.earlyLateTotal)}</span>
+                            <span className="font-semibold text-slate-700">Điều chỉnh check-in/check-out</span>
+                            <span className="font-bold text-blue-600">{calculation.earlyLateTotal > 0 ? '+' : ''}{formatCurrency(calculation.earlyLateTotal)}</span>
                         </div>
                     )}
                 </div>
