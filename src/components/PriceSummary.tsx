@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Calculator, Tag, Percent, Check, ChevronDown } from 'lucide-react';
+import { Calculator, Tag, Percent, Check, ChevronDown, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { CalculationResult, GlobalAdjustment, EarlyCheckinLateCheckoutType } from './types';
@@ -17,7 +18,10 @@ interface PriceSummaryProps {
     formatCurrency: (amount: number) => string;
     selectedEarlyLateOptions: Set<EarlyCheckinLateCheckoutType>;
     onToggleEarlyLateOption: (type: EarlyCheckinLateCheckoutType) => void;
-    checkOut?: string;
+    checkIn: string;
+    checkOut: string;
+    branchName: string;
+    roomName: string;
 }
 
 export function PriceSummary({
@@ -32,8 +36,27 @@ export function PriceSummary({
     formatCurrency,
     selectedEarlyLateOptions,
     onToggleEarlyLateOption,
+    checkIn,
     checkOut,
+    branchName,
+    roomName,
 }: PriceSummaryProps) {
+    const [copiedText, setCopiedText] = useState('');
+    const [copyError, setCopyError] = useState('');
+    const quote = calculation && branchName && roomName
+        ? `${branchName} | ${roomName} | Check-in: ${format(parseISO(checkIn), 'dd/MM/yyyy')} | Check-out: ${format(parseISO(checkOut), 'dd/MM/yyyy')} | Tổng giá phòng: ${formatCurrency(calculation.finalTotal)}`
+        : '';
+
+    const handleCopy = async () => {
+        setCopyError('');
+        try {
+            await navigator.clipboard.writeText(quote);
+            setCopiedText(quote);
+        } catch {
+            setCopyError('Không thể sao chép tự động. Bạn có thể chọn dòng tổng hợp bên dưới để sao chép.');
+        }
+    };
+
     return (
         <section className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-4 sm:p-6 transition-all">
             {calculation ? (
@@ -50,6 +73,30 @@ export function PriceSummary({
                             {calculation.nights.length} đêm
                         </div>
                     </div>
+
+                    {quote && (
+                        <div className="mb-4 sm:mb-6 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+                            <div className="flex items-center justify-between gap-3 mb-2">
+                                <label htmlFor="single-room-quote" className="text-xs font-semibold text-slate-700">Tổng hợp đặt phòng</label>
+                                <button
+                                    type="button"
+                                    onClick={handleCopy}
+                                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 focus-visible:outline-2 focus-visible:outline-indigo-500"
+                                >
+                                    {copiedText === quote ? <Check size={14} /> : <Copy size={14} />}
+                                    <span aria-live="polite">{copiedText === quote ? 'Đã sao chép' : 'Sao chép'}</span>
+                                </button>
+                            </div>
+                            <input
+                                id="single-room-quote"
+                                readOnly
+                                value={quote}
+                                onFocus={event => event.currentTarget.select()}
+                                className="w-full min-w-0 rounded-lg border border-indigo-100 bg-white px-3 py-2 text-xs text-slate-700 focus:outline-indigo-500"
+                            />
+                            {copyError && <p role="alert" className="mt-2 text-xs text-rose-600">{copyError}</p>}
+                        </div>
+                    )}
 
                     {/* Deposit & Remaining */}
                     <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6 p-3 sm:p-4 bg-slate-50/50 rounded-xl border border-slate-100">

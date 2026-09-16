@@ -453,6 +453,9 @@ export default function App() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                   <div className="lg:col-span-5">
                     <PriceSummary
+                      checkIn={checkIn}
+                      branchName={branches.find(branch => branch.id === selectedBranchId)?.name || ''}
+                      roomName={selectedRoom?.name || ''}
                       calculation={calculation}
                       globalAdjustment={globalAdjustment}
                       includeVAT={includeVAT}

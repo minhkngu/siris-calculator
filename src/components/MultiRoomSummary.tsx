@@ -26,23 +26,46 @@ export function MultiRoomSummary({
     formatCurrency,
 }: MultiRoomSummaryProps) {
     const [copied, setCopied] = useState(false);
+    const [copiedSummary, setCopiedSummary] = useState(false);
+    const [copySummaryError, setCopySummaryError] = useState('');
+
+    const includedItems = summary.items.filter(it => it.item.isIncluded !== false);
+    const roomSummaryLines = includedItems.map(item => {
+        const branchName = item.branch?.name || '';
+        const roomName = item.room?.name || 'Phòng';
+        const checkInStr = item.item.checkIn ? format(parseISO(item.item.checkIn), 'dd/MM/yyyy') : '';
+        const checkOutStr = item.item.checkOut ? format(parseISO(item.item.checkOut), 'dd/MM/yyyy') : '';
+        const total = item.calculation?.finalTotal || 0;
+
+        return `${branchName} | ${roomName} | Check-in: ${checkInStr} | Check-out: ${checkOutStr} | Tổng giá phòng: ${formatCurrency(total)}`;
+    });
+    const roomSummary = roomSummaryLines.length > 0
+        ? [...roomSummaryLines, `Tổng giá tất cả phòng: ${formatCurrency(summary.finalTotal)}`].join('\n')
+        : '';
+
+    const handleCopySummary = async () => {
+        setCopySummaryError('');
+        try {
+            await navigator.clipboard.writeText(roomSummary);
+            setCopiedSummary(true);
+            setTimeout(() => setCopiedSummary(false), 2000);
+        } catch {
+            setCopySummaryError('Không thể sao chép tự động. Bạn có thể chọn nội dung bên dưới để sao chép.');
+        }
+    };
 
     const handleCopyQuote = () => {
-        const includedItems = summary.items.filter(it => it.item.isIncluded !== false);
-
         let text = `📋 BÁO GIÁ ĐẶT PHÒNG SIRIS RESIDENCES\n`;
         text += `Số lượng: ${summary.totalRooms} phòng (${summary.totalNights} đêm tổng cộng)\n\n`;
 
-        includedItems.forEach((item, idx) => {
+        includedItems.forEach(item => {
             const roomName = item.room?.name || 'Phòng';
             const branchName = item.branch?.name || '';
             const checkInStr = item.item.checkIn ? format(parseISO(item.item.checkIn), 'dd/MM/yyyy') : '';
             const checkOutStr = item.item.checkOut ? format(parseISO(item.item.checkOut), 'dd/MM/yyyy') : '';
             const total = item.calculation?.finalTotal || 0;
 
-            text += `🔹 Phòng ${idx + 1}: ${roomName} (${branchName})\n`;
-            text += `   • Thời gian: ${checkInStr} - ${checkOutStr} (${item.calculation?.nights.length || 0} đêm)\n`;
-            text += `   • Tiền phòng: ${formatCurrency(total)}\n\n`;
+            text += `${branchName} | ${roomName} | Check-in: ${checkInStr} | Check-out: ${checkOutStr} | Tổng giá phòng: ${formatCurrency(total)}\n\n`;
         });
 
         text += `💰 TỔNG CỘNG:\n`;
@@ -86,6 +109,33 @@ export function MultiRoomSummary({
                     </span>
                 </div>
             </div>
+
+            {roomSummary && (
+                <div className="mb-3 sm:mb-6 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                        <label htmlFor="multi-room-summary" className="text-xs font-semibold text-slate-700">
+                            Tổng hợp đặt phòng
+                        </label>
+                        <button
+                            type="button"
+                            onClick={handleCopySummary}
+                            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 focus-visible:outline-2 focus-visible:outline-indigo-500"
+                        >
+                            {copiedSummary ? <Check size={14} /> : <Copy size={14} />}
+                            <span aria-live="polite">{copiedSummary ? 'Đã sao chép' : 'Sao chép'}</span>
+                        </button>
+                    </div>
+                    <textarea
+                        id="multi-room-summary"
+                        readOnly
+                        value={roomSummary}
+                        rows={Math.min(Math.max(includedItems.length + 1, 2), 6)}
+                        onFocus={event => event.currentTarget.select()}
+                        className="w-full resize-none rounded-lg border border-indigo-100 bg-white px-3 py-2 text-xs leading-5 text-slate-700 focus:outline-indigo-500"
+                    />
+                    {copySummaryError && <p role="alert" className="mt-2 text-xs text-rose-600">{copySummaryError}</p>}
+                </div>
+            )}
 
             {/* Deposit & Remaining */}
             <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-6 p-2.5 sm:p-4 bg-slate-50/50 rounded-lg sm:rounded-xl border border-slate-100">
@@ -283,4 +333,3 @@ export function MultiRoomSummary({
         </section>
     );
 }
-
