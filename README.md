@@ -68,7 +68,7 @@ src/
 
 ```bash
 npm install
-cp .env.example .env          # Điền LARK_APP_ID, LARK_APP_SECRET
+cp .env.example .env          # Điền LARK_APP_ID, LARK_APP_SECRET, LARK_BASE_TOKEN
 npm run dev                    # Chạy web và API Lark cục bộ
 npm run build                  # Build production
 ```
@@ -77,13 +77,13 @@ npm run build                  # Build production
 
 Ứng dụng đọc dữ liệu từ Base **Siris Web**, gồm các bảng `branches`, `room_types`, `stay_discounts`, `date_adjustments` và `items`. Máy chủ Node.js trên máy tính gọi Lark Open API, còn trình duyệt chỉ gọi `/api/hotel-data`; App Secret và access token không được gửi xuống trình duyệt.
 
-Trong Lark Developer Console, tạo ứng dụng nội bộ, cấp quyền đọc bản ghi Base, thêm ứng dụng vào Base Siris Web, rồi điền App ID và App Secret vào `.env`. Khởi động lại `npm run dev` sau khi đổi `.env`.
+Trong Lark Developer Console, tạo ứng dụng nội bộ, cấp quyền đọc bản ghi Base, thêm ứng dụng vào Base Siris Web, rồi điền App ID, App Secret và Base token vào `.env`. Khởi động lại `npm run dev` sau khi đổi `.env`.
 
 ## Triển khai trên Vercel
 
 Project Vercel sử dụng framework Vite, lệnh build `npm run build` và thư mục đầu ra `dist`. Đường dẫn `/api/hotel-data` được phục vụ bằng Node.js Vercel Function trong `api/hotel-data.js`, dùng chung phần đọc và kiểm tra dữ liệu Lark với máy chủ cục bộ.
 
-Thêm `LARK_APP_ID` và `LARK_APP_SECRET` vào Environment Variables của project cho môi trường **Production**, lưu dưới loại **Secret**, rồi triển khai lại. Không dùng tiền tố `VITE_` cho các giá trị này. Bí mật nằm phía máy chủ; file `.env` cục bộ không được đưa vào Git hay bản triển khai.
+Thêm `LARK_APP_ID`, `LARK_APP_SECRET` và `LARK_BASE_TOKEN` vào Environment Variables của project cho môi trường **Production**, rồi triển khai lại. Không dùng tiền tố `VITE_` cho các giá trị này. Các biến chỉ được đọc phía máy chủ; file `.env` cục bộ không được đưa vào Git hay bản triển khai.
 
 Function chạy tại Singapore (`sin1`). Phản hồi thành công được CDN Vercel lưu 30 giây; trình duyệt không lưu dữ liệu API và lỗi không được lưu đệm. Production không lưu thêm bộ dữ liệu trong instance để tránh cộng dồn thời gian đệm; bản cục bộ vẫn lưu trong bộ nhớ 30 giây.
 
