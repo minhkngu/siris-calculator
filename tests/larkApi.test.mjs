@@ -193,9 +193,17 @@ test('reissues a tenant token once when Lark rejects the cached token', async ()
     })[key] === tableId);
     return Response.json({ code: 0, data: { items: rows[tableKey], has_more: false } });
   };
-  const result = await fetchHotelData({ appId: 'app', appSecret: 'secret', fetchImpl });
+  let sharedToken;
+  let sharedReads = 0;
+  const tokenStore = {
+    get: async () => { sharedReads += 1; return sharedToken; },
+    set: async value => { sharedToken = value; },
+  };
+  const result = await fetchHotelData({ appId: 'app', appSecret: 'secret', fetchImpl, tokenStore });
   assert.equal(result.branches[0].name, 'Siris');
   assert.equal(issuedTokens, 2);
+  assert.equal(sharedReads, 1);
+  assert.equal(sharedToken.token, 'tenant-2');
 });
 
 test('rejects a truncated page instead of returning partial data', async () => {

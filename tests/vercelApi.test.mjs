@@ -23,7 +23,7 @@ test('Vercel endpoint returns actionable configuration errors as uncached JSON',
   }
 });
 
-test('Vercel caches successful responses for 30 seconds with a bounded background refresh', async t => {
+test('Vercel caches successful responses for 5 seconds without serving stale data', async t => {
   clearHotelDataCache();
   const previousId = process.env.LARK_APP_ID;
   const previousSecret = process.env.LARK_APP_SECRET;
@@ -42,7 +42,8 @@ test('Vercel caches successful responses for 30 seconds with a bounded backgroun
       const response = await GET();
       assert.equal(response.status, 200);
       assert.equal(response.headers.get('Cache-Control'), 'no-store');
-      assert.equal(response.headers.get('Vercel-CDN-Cache-Control'), 'public, s-maxage=30, stale-while-revalidate=30');
+      assert.equal(response.headers.get('Vercel-CDN-Cache-Control'), 'public, s-maxage=5');
+      assert.match(response.headers.get('Server-Timing'), /^lark;dur=\d+$/u);
       const raw = await response.text();
       assert.equal(raw.includes('test-private-secret'), false);
       assert.equal(raw.includes('test-private-token'), false);

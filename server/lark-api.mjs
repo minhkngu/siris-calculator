@@ -83,14 +83,21 @@ async function waitBeforeRetry(attempt, retryAfter) {
   await new Promise(resolve => setTimeout(resolve, delay));
 }
 
-export async function getTenantAccessToken({ appId, appSecret, fetchImpl = fetch, now = Date.now } = {}) {
+export async function getTenantAccessToken({ appId, appSecret, fetchImpl = fetch, now = Date.now, tokenStore, forceRefresh = false } = {}) {
   if (!appId || !appSecret) {
     throw new HotelDataError('Chưa cấu hình Lark API. Thêm LARK_APP_ID và LARK_APP_SECRET vào file .env rồi khởi động lại máy chủ.', 503);
   }
-  if (tokenCache?.token && tokenCache.expiresAt - now() > 60_000) return tokenCache.token;
+  if (!forceRefresh && tokenCache?.token && tokenCache.expiresAt - now() > 60_000) return tokenCache.token;
 
   if (!tokenRequest) {
     tokenRequest = (async () => {
+      if (!forceRefresh && tokenStore) {
+        const cached = await tokenStore.get();
+        if (cached?.token && cached.expiresAt - now() > 60_000) {
+          tokenCache = cached;
+          return cached.token;
+        }
+      }
       let response;
       try {
         response = await fetchImpl(`${API_BASE}/auth/v3/tenant_access_token/internal`, {
@@ -115,6 +122,7 @@ export async function getTenantAccessToken({ appId, appSecret, fetchImpl = fetch
         token: body.tenant_access_token,
         expiresAt: now() + Number(body.expire ?? 7200) * 1000,
       };
+      if (tokenStore) await tokenStore.set(tokenCache);
       return tokenCache.token;
     })();
   }
@@ -329,6 +337,7 @@ export async function fetchHotelData({
   appSecret = process.env.LARK_APP_SECRET,
   fetchImpl = fetch,
   now = Date.now,
+  tokenStore,
   cacheTtlMs = process.env.VERCEL ? 0 : CACHE_MS,
 } = {}) {
   if (!appId || !appSecret) {
@@ -338,14 +347,14 @@ export async function fetchHotelData({
 
   if (!dataRequest) {
     dataRequest = (async () => {
-      const token = await getTenantAccessToken({ appId, appSecret, fetchImpl, now });
+      const token = await getTenantAccessToken({ appId, appSecret, fetchImpl, now, tokenStore });
       const entries = await Promise.all(Object.entries(TABLES).map(async ([key, table]) => {
         const records = await listRecords(
           table.id,
           table.name,
           token,
           fetchImpl,
-          () => getTenantAccessToken({ appId, appSecret, fetchImpl, now }),
+          () => getTenantAccessToken({ appId, appSecret, fetchImpl, now, tokenStore, forceRefresh: true }),
           table.fields,
         );
         return [key, records];

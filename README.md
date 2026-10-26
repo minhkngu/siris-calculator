@@ -85,9 +85,11 @@ Project Vercel sử dụng framework Vite, lệnh build `npm run build` và thư
 
 Thêm `LARK_APP_ID`, `LARK_APP_SECRET` và `LARK_BASE_TOKEN` vào Environment Variables của project cho môi trường **Production**, rồi triển khai lại. Không dùng tiền tố `VITE_` cho các giá trị này. Các biến chỉ được đọc phía máy chủ; file `.env` cục bộ không được đưa vào Git hay bản triển khai.
 
-Function chạy tại Singapore (`sin1`). Phản hồi thành công được CDN Vercel lưu 30 giây; trình duyệt không lưu dữ liệu API và lỗi không được lưu đệm. Production không lưu thêm bộ dữ liệu trong instance để tránh cộng dồn thời gian đệm; bản cục bộ vẫn lưu trong bộ nhớ 30 giây.
+Function chạy tại Singapore (`sin1`). Phản hồi thành công được CDN Vercel lưu 5 giây, không trả bản cũ khi cập nhật nền; trình duyệt không lưu dữ liệu API và lỗi không được lưu đệm. Production không lưu thêm bộ dữ liệu trong instance để tránh cộng dồn thời gian đệm; bản cục bộ vẫn lưu trong bộ nhớ 30 giây. Sau khi hết cache, yêu cầu tiếp theo đọc Lark mới; thời gian cập nhật gồm tối đa 5 giây cache cộng thời gian gọi Lark, không phải đồng bộ tức thì.
 
-Tenant access token được tái sử dụng theo hạn Lark trả về. Các yêu cầu đồng thời trong cùng instance dùng chung một lần tải đủ 5 bảng, chỉ đọc các cột ứng dụng cần. Khi cache CDN hết hạn, API đọc dữ liệu mới và trả lỗi nếu không thể tải đủ dữ liệu hợp lệ.
+Tenant access token được tái sử dụng theo hạn Lark trả về. Trên Vercel, token được mã hóa AES-256-GCM bằng khóa dẫn xuất từ App Secret và lưu trong Runtime Cache theo project, môi trường và thông tin xác thực để instance mới không cần xác thực lại. Token được bỏ trước hạn 60 giây; nếu Lark từ chối token, API xác thực lại và thay bản cache. Cache lỗi hoặc quá 500 ms thì tiếp tục xác thực trực tiếp với Lark. Không lưu App Secret trong cache hoặc trả token xuống trình duyệt.
+
+Các yêu cầu đồng thời trong cùng instance dùng chung một lần tải đủ 5 bảng, chỉ đọc các cột ứng dụng cần. Khi cache CDN hết hạn, API đọc dữ liệu mới và trả lỗi nếu không thể tải đủ dữ liệu hợp lệ. Header `Server-Timing` và log `hotel-data-load` chỉ ghi tổng thời gian xử lý, không ghi nội dung dữ liệu hoặc token.
 
 ## Các cột Lark Base được sử dụng
 
