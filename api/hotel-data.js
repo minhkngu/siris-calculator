@@ -9,7 +9,8 @@ export async function GET() {
   try {
     const data = await fetchHotelData({ cacheTtlMs: 0 });
     return Response.json(data, {
-      headers: { ...headers, 'Vercel-CDN-Cache-Control': 'public, s-maxage=30' },
+      // Keep the previous response available for a bounded background refresh.
+      headers: { ...headers, 'Vercel-CDN-Cache-Control': 'public, s-maxage=30, stale-while-revalidate=30' },
     });
   } catch (error) {
     const knownError = error instanceof HotelDataError;
