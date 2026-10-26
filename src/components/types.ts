@@ -84,7 +84,7 @@ export interface ComparisonItem {
 }
 
 export interface Item {
-    id: number;
+    id: string;
     item_name: string;
     kind: string | null;
     quantity: number;

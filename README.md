@@ -24,7 +24,7 @@ Phần mềm quản lý nội bộ dành cho Siris Residences — hỗ trợ tí
 
 ### Bồi thường vật dụng
 - **Tab riêng biệt**: Chuyển đổi giữa "Tính tiền phòng" và "Bồi thường vật dụng".
-- **Danh sách vật dụng**: Lấy từ bảng `items` trong Supabase, hiển thị dạng lưới đa cột.
+- **Danh sách vật dụng**: Lấy từ bảng `items` trong Lark Base, hiển thị dạng lưới đa cột.
 - **Gom nhóm theo loại**: Phân nhóm theo `kind` (cái, đôi, ...).
 - **Chọn số lượng**: Bộ điều khiển +/- cho phép chọn số lượng bồi thường (tối đa theo số lượng trong phòng).
 - **Tìm kiếm**: Ô tìm kiếm lọc nhanh theo tên hoặc loại vật dụng.
@@ -32,7 +32,7 @@ Phần mềm quản lý nội bộ dành cho Siris Residences — hỗ trợ tí
 
 ## Công nghệ
 
-React 19, TypeScript 5.8, Vite 6, Tailwind CSS 4, Supabase, Framer Motion, Lucide React, date-fns, react-day-picker.
+React 19, TypeScript 5.8, Vite 6, Tailwind CSS 4, Lark Open API, Framer Motion, Lucide React, date-fns, react-day-picker.
 
 ## Cấu trúc
 
@@ -57,37 +57,45 @@ src/
 │   ├── FetchErrorView.tsx      # Trang lỗi
 │   ├── MultiRoomSelector.tsx   # Chọn & cấu hình nhiều phòng
 │   └── MultiRoomSummary.tsx    # Tổng hợp & sao chép báo giá nhiều phòng
-└── lib/
-    ├── supabase.ts             # Supabase client
-    └── utils.ts                # cn() utility
+├── lib/
+│   ├── hotelCalculator.ts      # Logic tính giá
+│   └── utils.ts                # cn() utility
+└── server/
+    └── lark-api.mjs            # API cục bộ đọc Lark Base
 ```
 
 ## Cài đặt
 
 ```bash
 npm install
-cp .env.example .env          # Điền VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
-npm run dev                    # Dev server
+cp .env.example .env          # Điền LARK_APP_ID, LARK_APP_SECRET
+npm run dev                    # Chạy web và API Lark cục bộ
 npm run build                  # Build production
 ```
 
-## Database (Supabase)
+## Lark Base
+
+Ứng dụng đọc dữ liệu từ Base **Siris Web**, gồm các bảng `branches`, `room_types`, `stay_discounts`, `date_adjustments` và `items`. Máy chủ Node.js trên máy tính gọi Lark Open API, còn trình duyệt chỉ gọi `/api/hotel-data`; App Secret và access token không được gửi xuống trình duyệt.
+
+Trong Lark Developer Console, tạo ứng dụng nội bộ, cấp quyền đọc bản ghi Base, thêm ứng dụng vào Base Siris Web, rồi điền App ID và App Secret vào `.env`. Khởi động lại `npm run dev` sau khi đổi `.env`.
+
+## Các cột Lark Base được sử dụng
 
 ```sql
 -- branches
-branches: id, name, address
+branches: name, address (Lark `record_id` là ID dùng trong ứng dụng)
 
 -- room_types
-room_types: id, branch_id/branchId, name, weekday_price/weekdayPrice, weekend_price/weekendPrice, is_hidden/isHidden
+room_types: braches (liên kết đến branches), name, weekdayprice, weekendprice, is_hidden
 
 -- stay_discounts
-stay_discounts: id, name, min_nights/minNights, discount_amount/discountAmount, is_percentage/isPercentage
+stay_discounts: name, minnights, discountamount, ispercentage
 
 -- date_adjustments
-date_adjustments: id, date, type, amount, is_percentage/isPercentage, note
+date_adjustments: date, type, amount, ispercentage, note
 
 -- items (vật dụng bồi thường)
-items: id, item_name, kind, quantity, unit_price
+items: item_name, kind, quantity, unit_price
 ## Kiểm tra code
 
 - `npm run typecheck`: kiểm tra kiểu dữ liệu và khai báo không sử dụng.

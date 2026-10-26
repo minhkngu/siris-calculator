@@ -1,0 +1,174 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+  clearHotelDataCache,
+  fetchHotelData,
+  getTenantAccessToken,
+  normalizeHotelRecords,
+} from '../server/lark-api.mjs';
+
+const rows = {
+  branches: [{ record_id: 'branch-1', fields: { name: 'Siris', address: 'Đà Nẵng' } }],
+  roomTypes: [
+    { record_id: 'room-1', fields: { braches: [{ record_id: 'branch-1', text: 'Siris' }], name: 'Deluxe', weekdayprice: 0, weekendprice: 1500000, is_hidden: 'false' } },
+    { record_id: 'room-hidden', fields: { braches: [{ record_id: 'branch-1' }], name: 'Hidden', weekdayprice: 1000000, weekendprice: 1200000, is_hidden: 'true' } },
+  ],
+  stayDiscounts: [{ record_id: 'discount-1', fields: { name: 'Long stay', minnights: 3, discountamount: 10, ispercentage: 'true' } }],
+  dateAdjustments: [{ record_id: 'adjustment-1', fields: { date: Date.UTC(2026, 9, 25, 17), type: 'surcharge', amount: 50000, ispercentage: 'false', note: 'Holiday' } }],
+  items: [{ record_id: 'item-1', fields: { item_name: 'Towel', kind: [{ text: 'CÁI' }], quantity: 2, unit_price: 100000 } }],
+};
+
+test('normalizes existing Lark rows, linked branches, booleans, zero prices and Vietnam dates', () => {
+  const data = normalizeHotelRecords(rows);
+  assert.deepEqual(data.branches, [{ id: 'branch-1', name: 'Siris', address: 'Đà Nẵng' }]);
+  assert.deepEqual(data.roomTypes, [{ id: 'room-1', branchId: 'branch-1', name: 'Deluxe', weekdayPrice: 0, weekendPrice: 1500000, isHidden: false }]);
+  assert.equal(data.stayDiscounts[0].isPercentage, true);
+  assert.equal(data.dateAdjustments[0].isPercentage, false);
+  assert.equal(data.dateAdjustments[0].date, '2026-10-26');
+  assert.equal(data.items[0].id, 'item-1');
+  assert.equal(data.items[0].kind, 'CÁI');
+});
+
+test('rejects unlinked rooms and invalid prices with record context', () => {
+  assert.throws(() => normalizeHotelRecords({
+    ...rows,
+    roomTypes: [{ record_id: 'broken-room', fields: { braches: [{ record_id: 'missing-branch' }], name: 'Broken', weekdayprice: 1, weekendprice: 1 } }],
+  }), /room_types.*broken-room.*braches/u);
+  assert.throws(() => normalizeHotelRecords({
+    ...rows,
+    roomTypes: [{ record_id: 'bad-price', fields: { braches: [{ record_id: 'branch-1' }], name: 'Broken', weekdayprice: 'unknown', weekendprice: 1 } }],
+  }), /room_types.*bad-price.*weekdayprice/u);
+});
+
+test('reads actual Lark record_ids links and skips only empty placeholder rows', () => {
+  const data = normalizeHotelRecords({
+    ...rows,
+    branches: [...rows.branches, { record_id: 'empty-branch', fields: { room_types: [{ text_arr: [] }] } }],
+    roomTypes: [{ ...rows.roomTypes[0], fields: { ...rows.roomTypes[0].fields, braches: [{ record_ids: ['branch-1'], table_id: 'tblnBd25IKxmXWUP' }] } }],
+    stayDiscounts: [...rows.stayDiscounts, { record_id: 'empty-discount', fields: { id: '2' } }],
+  });
+  assert.equal(data.roomTypes[0].branchId, 'branch-1');
+  assert.equal(data.branches.length, 1);
+  assert.equal(data.stayDiscounts.length, 1);
+  assert.throws(() => normalizeHotelRecords({
+    ...rows,
+    roomTypes: [{ record_id: 'partial-room', fields: { name: 'Missing price' } }],
+  }), /partial-room/u);
+  assert.throws(() => normalizeHotelRecords({
+    ...rows,
+    roomTypes: [{ ...rows.roomTypes[0], fields: { ...rows.roomTypes[0].fields, braches: [{ record_ids: ['branch-1', 'another-branch'] }] } }],
+  }), /braches/u);
+});
+
+test('rejects invalid dates and unsupported boolean strings', () => {
+  assert.throws(() => normalizeHotelRecords({
+    ...rows,
+    dateAdjustments: [{ record_id: 'bad-date', fields: { date: 'not-a-date', type: 'discount', amount: 1, ispercentage: 'false' } }],
+  }), /date_adjustments.*bad-date.*date/u);
+  assert.throws(() => normalizeHotelRecords({
+    ...rows,
+    stayDiscounts: [{ record_id: 'bad-boolean', fields: { name: 'Broken', minnights: 1, discountamount: 2, ispercentage: 'maybe' } }],
+  }), /stay_discounts.*bad-boolean.*ispercentage/u);
+});
+
+test('requires server-side Lark credentials and never calls the network without them', async () => {
+  clearHotelDataCache();
+  let calls = 0;
+  await assert.rejects(fetchHotelData({ appId: '', appSecret: '', fetchImpl: async () => { calls += 1; } }), /LARK_APP_ID.*LARK_APP_SECRET/u);
+  assert.equal(calls, 0);
+});
+
+test('fetches and caches a complete multi-page dataset from the five existing tables', async () => {
+  clearHotelDataCache();
+  let calls = 0;
+  const fetchImpl = async (url, options = {}) => {
+    calls += 1;
+    const parsed = new URL(url);
+    if (parsed.pathname.endsWith('/auth/v3/tenant_access_token/internal')) {
+      assert.equal(options.method, 'POST');
+      return Response.json({ code: 0, tenant_access_token: 'private-token', expire: 7200 });
+    }
+    assert.equal(options.headers.Authorization, 'Bearer private-token');
+    const tableId = parsed.pathname.split('/').at(-2);
+    const key = Object.keys(rows).find(name => ({
+      branches: 'tblnBd25IKxmXWUP', roomTypes: 'tbltQk4cUAgQh2jC', stayDiscounts: 'tbl25YrJ22bB7b7k',
+      dateAdjustments: 'tblqrz52mKLrds4m', items: 'tblclDu4FlVGj33n',
+    })[name] === tableId);
+    if (parsed.searchParams.has('page_token')) {
+      return Response.json({ code: 0, data: { items: [rows[key][1]], has_more: false } });
+    }
+    const records = rows[key];
+    return Response.json({ code: 0, data: { items: records.slice(0, 1), has_more: records.length > 1, page_token: records.length > 1 ? 'next' : undefined } });
+  };
+
+  const first = await fetchHotelData({ appId: 'app', appSecret: 'secret', fetchImpl, now: () => 1_000_000 });
+  const callsAfterFirst = calls;
+  const second = await fetchHotelData({ appId: 'app', appSecret: 'secret', fetchImpl, now: () => 1_010_000 });
+  assert.equal(first, second);
+  assert.equal(first.roomTypes.length, 1);
+  assert.equal(calls, callsAfterFirst);
+});
+
+test('refreshes expired tenant tokens using the API expiry time', async () => {
+  clearHotelDataCache();
+  let issued = 0;
+  const fetchImpl = async () => {
+    issued += 1;
+    return Response.json({ code: 0, tenant_access_token: `token-${issued}`, expire: 120 });
+  };
+  assert.equal(await getTenantAccessToken({ appId: 'app', appSecret: 'secret', fetchImpl, now: () => 1000 }), 'token-1');
+  assert.equal(await getTenantAccessToken({ appId: 'app', appSecret: 'secret', fetchImpl, now: () => 2000 }), 'token-1');
+  assert.equal(await getTenantAccessToken({ appId: 'app', appSecret: 'secret', fetchImpl, now: () => 62_000 }), 'token-2');
+});
+
+test('reissues a tenant token once when Lark rejects the cached token', async () => {
+  clearHotelDataCache();
+  let issuedTokens = 0;
+  let rejectedCachedToken = false;
+  const fetchImpl = async (url, options = {}) => {
+    const parsed = new URL(url);
+    if (parsed.pathname.endsWith('/auth/v3/tenant_access_token/internal')) {
+      issuedTokens += 1;
+      return Response.json({ code: 0, tenant_access_token: `tenant-${issuedTokens}`, expire: 7200 });
+    }
+    if (parsed.pathname.includes('/tblnBd25IKxmXWUP/') && options.headers.Authorization === 'Bearer tenant-1' && !rejectedCachedToken) {
+      rejectedCachedToken = true;
+      return Response.json({ code: 99991668, msg: 'Invalid access token' });
+    }
+    const tableId = parsed.pathname.split('/').at(-2);
+    const tableKey = Object.keys(rows).find(key => ({
+      branches: 'tblnBd25IKxmXWUP', roomTypes: 'tbltQk4cUAgQh2jC', stayDiscounts: 'tbl25YrJ22bB7b7k',
+      dateAdjustments: 'tblqrz52mKLrds4m', items: 'tblclDu4FlVGj33n',
+    })[key] === tableId);
+    return Response.json({ code: 0, data: { items: rows[tableKey], has_more: false } });
+  };
+  const result = await fetchHotelData({ appId: 'app', appSecret: 'secret', fetchImpl });
+  assert.equal(result.branches[0].name, 'Siris');
+  assert.equal(issuedTokens, 2);
+});
+
+test('rejects a truncated page instead of returning partial data', async () => {
+  clearHotelDataCache();
+  const fetchImpl = async url => {
+    if (new URL(url).pathname.endsWith('/auth/v3/tenant_access_token/internal')) {
+      return Response.json({ code: 0, tenant_access_token: 'tenant', expire: 7200 });
+    }
+    return Response.json({ code: 0, data: { items: [], has_more: true } });
+  };
+  await assert.rejects(fetchHotelData({ appId: 'app', appSecret: 'secret', fetchImpl }), /mã trang kế tiếp/u);
+});
+
+test('does not cache an incomplete dataset after a Lark permission error', async () => {
+  clearHotelDataCache();
+  let recordCalls = 0;
+  const fetchImpl = async url => {
+    if (new URL(url).pathname.endsWith('/auth/v3/tenant_access_token/internal')) {
+      return Response.json({ code: 0, tenant_access_token: 'token', expire: 7200 });
+    }
+    recordCalls += 1;
+    return Response.json({ code: 99991672, msg: 'Access denied' }, { status: 403 });
+  };
+  await assert.rejects(fetchHotelData({ appId: 'app', appSecret: 'secret', fetchImpl }), /quyền đọc Base/u);
+  await assert.rejects(fetchHotelData({ appId: 'app', appSecret: 'secret', fetchImpl }), /quyền đọc Base/u);
+  assert.equal(recordCalls, 10);
+});

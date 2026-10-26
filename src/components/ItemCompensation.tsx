@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { Package, Check, Minus, Plus, Search } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Item } from './types';
+import { groupItemsByKind } from './groupItemsByKind';
 
 interface ItemCompensationProps {
     items: Item[];
-    selectedQuantities: Record<number, number>;
-    onChangeQuantity: (id: number, quantity: number) => void;
+    selectedQuantities: Record<string, number>;
+    onChangeQuantity: (id: string, quantity: number) => void;
     formatCurrency: (amount: number) => string;
 }
 
@@ -42,15 +43,7 @@ export function ItemCompensation({
         );
     }, [items, searchQuery]);
 
-    const groupedItems = useMemo(() => {
-        const groups: Record<string, Item[]> = {};
-        filteredItems.forEach(item => {
-            const key = item.kind || 'Khác';
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(item);
-        });
-        return groups;
-    }, [filteredItems]);
+    const groupedItems = useMemo(() => groupItemsByKind(filteredItems), [filteredItems]);
 
     return (
         <section className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-4 sm:p-6 transition-all">
@@ -97,7 +90,7 @@ export function ItemCompensation({
                 </div>
             ) : (
                 <div>
-                    {Object.entries(groupedItems).map(([kind, kindItems]) => (
+                    {groupedItems.map(([kind, kindItems]) => (
                         <div key={kind} className="mb-4 sm:mb-6">
                             <div className="flex items-center gap-2 mb-2 sm:mb-3 px-1">
                                 <h3 className="text-[12px] sm:text-[13px] font-semibold text-slate-400 uppercase tracking-wider">

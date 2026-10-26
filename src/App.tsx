@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useLayoutEffect, useRef } from 'react';
 import { format, addDays, parseISO, getDay, isValid } from 'date-fns';
 import { SurchargeBanner } from './components/SurchargeBanner';
 import { BranchDropdown } from './components/BranchDropdown';
@@ -12,14 +12,105 @@ import { ItemCompensation } from './components/ItemCompensation';
 import { MultiRoomSelector } from './components/MultiRoomSelector';
 import { MultiRoomSummary } from './components/MultiRoomSummary';
 import { useCalculateForRoom, useComparisons, useMultiRoomCalculator } from './components/useHotelCalculator';
-import { supabase } from './lib/supabase';
 import { Branch, RoomType, DateAdjustment, GlobalAdjustment, StayDiscount, EarlyCheckinLateCheckoutType, Item, SelectedRoomItem } from './components/types';
 import { Hotel, Layers } from 'lucide-react';
 
 const currencyFormatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
 const formatCurrency = (amount: number) => currencyFormatter.format(amount);
+const SESSION_STATE_KEY = 'hotel-price-calculator:session:v1';
+const EARLY_LATE_OPTION_TYPES: EarlyCheckinLateCheckoutType[] = [
+  'checkin_2200', 'early_0800', 'early_1230', 'early_1300', 'late_1300', 'late_1800',
+];
+
+interface PersistedSession {
+  version: 1;
+  activeTab: 'room' | 'items';
+  roomMode: 'single' | 'multi';
+  selectedBranchId: string;
+  selectedRoomId: string;
+  checkIn: string;
+  checkOut: string;
+  globalAdjustment: GlobalAdjustment;
+  includeVAT: boolean;
+  vatRate: number;
+  compareBranchIds: string[];
+  compareRoomIds: string[];
+  selectedEarlyLateOptions: EarlyCheckinLateCheckoutType[];
+  multiRooms: Array<Omit<SelectedRoomItem, 'earlyLateOptions'> & { earlyLateOptions: EarlyCheckinLateCheckoutType[] }>;
+  selectedQuantities: Record<string, number>;
+  scrollY: number;
+}
+
+function readPersistedSession(): PersistedSession | null {
+  try {
+    const saved = sessionStorage.getItem(SESSION_STATE_KEY);
+    if (!saved) return null;
+    const value = JSON.parse(saved) as PersistedSession;
+    return value?.version === 1 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function isValidStayDates(checkIn: unknown, checkOut: unknown): checkIn is string {
+  if (typeof checkIn !== 'string' || typeof checkOut !== 'string') return false;
+  const start = parseISO(checkIn);
+  const end = parseISO(checkOut);
+  return /^\d{4}-\d{2}-\d{2}$/.test(checkIn)
+    && /^\d{4}-\d{2}-\d{2}$/.test(checkOut)
+    && isValid(start)
+    && isValid(end)
+    && checkOut > checkIn;
+}
+
+function restoreMultiRooms(
+  savedRooms: PersistedSession['multiRooms'] | undefined,
+  branches: Branch[],
+  roomTypes: RoomType[],
+  defaultCheckIn: string,
+  defaultCheckOut: string,
+): SelectedRoomItem[] {
+  const source = Array.isArray(savedRooms) ? savedRooms.slice(0, 10) : [];
+  const restored = source.flatMap((room, index) => {
+    const branchId = branches.some(branch => branch.id === room?.branchId)
+      ? room.branchId
+      : branches[0]?.id;
+    if (!branchId) return [];
+    const branchRooms = roomTypes.filter(type => type.branchId === branchId);
+    const roomId = branchRooms.some(type => type.id === room?.roomId)
+      ? room.roomId
+      : branchRooms[0]?.id;
+    if (!roomId) return [];
+    const checkIn = isValidStayDates(room?.checkIn, room?.checkOut) ? room.checkIn : defaultCheckIn;
+    const checkOut = isValidStayDates(room?.checkIn, room?.checkOut) ? room.checkOut : defaultCheckOut;
+    const options = new Set((Array.isArray(room?.earlyLateOptions) ? room.earlyLateOptions : [])
+      .filter((option): option is EarlyCheckinLateCheckoutType => EARLY_LATE_OPTION_TYPES.includes(option)));
+    const checkoutDate = parseISO(checkOut);
+    if ((getDay(checkoutDate) === 5 || getDay(checkoutDate) === 6) && options.has('late_1800')) {
+      options.delete('late_1800');
+    }
+    return [{
+      id: typeof room?.id === 'string' && room.id ? room.id : `room-${index + 1}`,
+      branchId,
+      roomId,
+      checkIn,
+      checkOut,
+      earlyLateOptions: options,
+      ...(typeof room?.isIncluded === 'boolean' ? { isIncluded: room.isIncluded } : {}),
+    }];
+  });
+  if (restored.length) return restored;
+  const branchId = branches[0]?.id;
+  const roomId = roomTypes.find(room => room.branchId === branchId)?.id;
+  return branchId && roomId ? [{
+    id: 'room-1', branchId, roomId, checkIn: defaultCheckIn, checkOut: defaultCheckOut, earlyLateOptions: new Set(),
+  }] : [];
+}
 
 export default function App() {
+  const [savedSession] = useState(readPersistedSession);
+  const restoreScrollY = useRef(savedSession?.scrollY ?? 0);
+  const [sessionReady, setSessionReady] = useState(false);
   const [activeTab, setActiveTab] = useState<'room' | 'items'>('room');
   const [roomMode, setRoomMode] = useState<'single' | 'multi'>('single');
 
@@ -61,9 +152,85 @@ export default function App() {
   const [multiRooms, setMultiRooms] = useState<SelectedRoomItem[]>([]);
 
   const [items, setItems] = useState<Item[]>([]);
-  const [selectedQuantities, setSelectedQuantities] = useState<Record<number, number>>({});
+  const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({});
 
-  const onChangeQuantity = useCallback((id: number, quantity: number) => {
+  useEffect(() => {
+    if (!sessionReady) return;
+    const snapshot: PersistedSession = {
+      version: 1,
+      activeTab,
+      roomMode,
+      selectedBranchId,
+      selectedRoomId,
+      checkIn,
+      checkOut,
+      globalAdjustment,
+      includeVAT,
+      vatRate,
+      compareBranchIds,
+      compareRoomIds,
+      selectedEarlyLateOptions: [...selectedEarlyLateOptions],
+      multiRooms: multiRooms.map(room => ({ ...room, earlyLateOptions: [...room.earlyLateOptions] })),
+      selectedQuantities,
+      scrollY: window.scrollY,
+    };
+    try {
+      sessionStorage.setItem(SESSION_STATE_KEY, JSON.stringify(snapshot));
+    } catch {
+      // The app remains usable when browser storage is unavailable or full.
+    }
+  }, [
+    sessionReady, activeTab, roomMode, selectedBranchId, selectedRoomId, checkIn, checkOut,
+    globalAdjustment, includeVAT, vatRate, compareBranchIds, compareRoomIds,
+    selectedEarlyLateOptions, multiRooms, selectedQuantities,
+  ]);
+
+  useEffect(() => {
+    const previousRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+    let frame = 0;
+    const saveScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        try {
+          const current = readPersistedSession();
+          if (current) {
+            sessionStorage.setItem(SESSION_STATE_KEY, JSON.stringify({ ...current, scrollY: window.scrollY }));
+          }
+        } catch {
+          // Ignore storage failures; native page navigation is unaffected.
+        }
+      });
+    };
+    const saveScrollImmediately = () => {
+      try {
+        const current = readPersistedSession();
+        if (current) sessionStorage.setItem(SESSION_STATE_KEY, JSON.stringify({ ...current, scrollY: window.scrollY }));
+      } catch {
+        // Ignore storage failures during page navigation.
+      }
+    };
+    window.addEventListener('scroll', saveScroll, { passive: true });
+    window.addEventListener('pagehide', saveScrollImmediately);
+    return () => {
+      window.history.scrollRestoration = previousRestoration;
+      window.removeEventListener('scroll', saveScroll);
+      window.removeEventListener('pagehide', saveScrollImmediately);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (loading || !sessionReady) return;
+    const target = restoreScrollY.current;
+    const firstFrame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => window.scrollTo(0, target));
+    });
+    return () => window.cancelAnimationFrame(firstFrame);
+  }, [loading, sessionReady]);
+
+  const onChangeQuantity = useCallback((id: string, quantity: number) => {
     setSelectedQuantities(prev => {
       if (quantity <= 0) {
         const next = { ...prev };
@@ -118,89 +285,99 @@ export default function App() {
   const fetchData = useCallback(async () => {
     try {
       setFetchError(null);
-      const [
-        { data: bData, error: bErr },
-        { data: rRaw, error: rErr },
-        { data: dRaw, error: dErr },
-        { data: aRaw, error: aErr },
-        { data: iData, error: iErr }
-      ] = await Promise.all([
-        supabase.from('branches').select('*'),
-        supabase.from('room_types').select('*'),
-        supabase.from('stay_discounts').select('*'),
-        supabase.from('date_adjustments').select('*'),
-        supabase.from('items').select('*')
-      ]);
-
-      if (bErr || rErr || dErr || aErr || iErr) {
-        throw new Error((bErr || rErr || dErr || aErr || iErr)?.message || 'Lỗi khi tải dữ liệu từ Supabase');
+      const response = await fetch('/api/hotel-data');
+      const hotelData = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(hotelData?.error || `Không tải được dữ liệu Lark (${response.status}).`);
       }
 
-      const rRawData = (rRaw || []).map((r: any) => ({
-        id: r.id,
-        branchId: r.branch_id || r.branchId || r.branchid,
-        name: r.name,
-        weekdayPrice: r.weekday_price || r.weekdayPrice || r.weekdayprice || 0,
-        weekendPrice: r.weekend_price || r.weekendPrice || r.weekendprice || 0,
-        isHidden: r.is_hidden === true || r.is_hidden === 1 || String(r.is_hidden).toLowerCase() === 'true'
-      }));
-      const rData = rRawData.filter(r => !r.isHidden);
+      const {
+        branches: bData,
+        roomTypes: rData,
+        stayDiscounts: dData,
+        dateAdjustments: aData,
+        items: iDataMapped,
+      } = hotelData as {
+        branches: Branch[];
+        roomTypes: RoomType[];
+        stayDiscounts: StayDiscount[];
+        dateAdjustments: DateAdjustment[];
+        items: Item[];
+      };
 
-      const dData = (dRaw || []).map((d: any) => ({
-        id: d.id,
-        name: d.name,
-        minNights: Number(d.minnights || 0),
-        discountAmount: Number(d.discountamount || 0),
-        isPercentage: d.ispercentage === true || d.ispercentage === 1 || String(d.ispercentage).toLowerCase() === 'true'
-      })).sort((a, b) => b.minNights - a.minNights);
-
-      const aData = (aRaw || []).map((a: any) => ({
-        id: a.id,
-        date: a.date,
-        type: a.type,
-        amount: Number(a.amount || 0),
-        isPercentage: a.ispercentage === true || a.ispercentage === 1 || String(a.ispercentage).toLowerCase() === 'true' || a.is_percentage === true || a.is_percentage === 1,
-        note: a.note
-      }));
-
-      const iDataMapped = (iData || []).map((i: any) => ({
-        id: i.id,
-        item_name: i.item_name,
-        kind: i.kind || null,
-        quantity: Number(i.quantity || 0),
-        unit_price: Number(i.unit_price || 0)
-      }));
-
-      setBranches(bData || []);
-      setRoomTypes(rData.sort((a, b) => a.weekdayPrice - b.weekdayPrice));
+      setBranches(bData);
+      setRoomTypes(rData);
       setStayDiscounts(dData);
       setDateAdjustments(aData);
       setItems(iDataMapped);
 
-      setCompareBranchIds((bData || []).map(b => b.id));
-      setCompareRoomIds(rData.map(r => r.id));
-
-      if (bData && bData.length > 0) {
+      if (bData.length > 0) {
+        const restore = savedSession;
         const defaultBranchId = bData[0].id;
-        setSelectedBranchId(current => bData.some(b => b.id === current) ? current : defaultBranchId);
-        const defaultBranchRooms = rData.filter(r => r.branchId === defaultBranchId);
-        const defaultRoomId = defaultBranchRooms[0]?.id || '';
+        const selectedBranch = restore && bData.some(branch => branch.id === restore.selectedBranchId)
+          ? restore.selectedBranchId
+          : defaultBranchId;
+        const defaultBranchRooms = rData.filter(room => room.branchId === selectedBranch);
+        const selectedRoom = restore && defaultBranchRooms.some(room => room.id === restore.selectedRoomId)
+          ? restore.selectedRoomId
+          : defaultBranchRooms[0]?.id || '';
+        const defaultCheckIn = format(new Date(), 'yyyy-MM-dd');
+        const defaultCheckOut = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+        const validSavedStay = isValidStayDates(restore?.checkIn, restore?.checkOut);
+        const restoredCheckIn = validSavedStay && restore ? restore.checkIn : defaultCheckIn;
+        const restoredCheckOut = validSavedStay && restore ? restore.checkOut : defaultCheckOut;
+        const restoredAdjustment = restore?.globalAdjustment;
+        const validAdjustment = restoredAdjustment
+          && (restoredAdjustment.type === 'surcharge' || restoredAdjustment.type === 'discount')
+          && Number.isFinite(restoredAdjustment.amount)
+          && restoredAdjustment.amount >= 0
+          && typeof restoredAdjustment.isPercentage === 'boolean';
 
-        setMultiRooms([
-          {
-            id: 'room-1',
-            branchId: defaultBranchId,
-            roomId: defaultRoomId,
-            checkIn: format(new Date(), 'yyyy-MM-dd'),
-            checkOut: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
-            earlyLateOptions: new Set()
+        setActiveTab(restore?.activeTab === 'items' ? 'items' : 'room');
+        setRoomMode(restore?.roomMode === 'multi' ? 'multi' : 'single');
+        setSelectedBranchId(selectedBranch);
+        setSelectedRoomId(selectedRoom);
+        setCheckIn(restoredCheckIn);
+        setCheckOut(restoredCheckOut);
+        setGlobalAdjustment(validAdjustment ? restoredAdjustment : { type: 'surcharge', amount: 0, isPercentage: true });
+        setIncludeVAT(typeof restore?.includeVAT === 'boolean' ? restore.includeVAT : false);
+        setVatRate(restore && Number.isFinite(restore.vatRate) && restore.vatRate >= 0 && restore.vatRate <= 100
+          ? restore.vatRate
+          : 10);
+        setCompareBranchIds(Array.isArray(restore?.compareBranchIds)
+          ? restore.compareBranchIds.filter(id => bData.some(branch => branch.id === id))
+          : bData.map(branch => branch.id));
+        setCompareRoomIds(Array.isArray(restore?.compareRoomIds)
+          ? restore.compareRoomIds.filter(id => rData.some(room => room.id === id))
+          : rData.map(room => room.id));
+        const restoredOptions = new Set((Array.isArray(restore?.selectedEarlyLateOptions) ? restore.selectedEarlyLateOptions : [])
+          .filter((option): option is EarlyCheckinLateCheckoutType => EARLY_LATE_OPTION_TYPES.includes(option)));
+        const checkOutDay = getDay(parseISO(restoredCheckOut));
+        if ((checkOutDay === 5 || checkOutDay === 6) && restoredOptions.has('late_1800')) restoredOptions.delete('late_1800');
+        if (restoredOptions.has('checkin_2200')) {
+          restoredOptions.delete('early_0800');
+          restoredOptions.delete('early_1230');
+          restoredOptions.delete('early_1300');
+        }
+        setSelectedEarlyLateOptions(restoredOptions);
+        setMultiRooms(restoreMultiRooms(restore?.multiRooms, bData, rData, defaultCheckIn, defaultCheckOut));
+        const currentItemIds = new Map(iDataMapped.map(item => [item.id, item.quantity]));
+        const quantities: Record<string, number> = {};
+        if (restore?.selectedQuantities && typeof restore.selectedQuantities === 'object') {
+          for (const [id, quantity] of Object.entries(restore.selectedQuantities)) {
+            const available = currentItemIds.get(id);
+            if (available !== undefined && Number.isInteger(quantity) && quantity > 0 && available > 0) {
+              quantities[id] = Math.min(quantity, available);
+            }
           }
-        ]);
+        }
+        setSelectedQuantities(quantities);
       }
+      setSessionReady(true);
       setLoading(false);
     } catch (error: any) {
-      console.error("Error fetching data:", error);
-      setFetchError(error.message);
+      console.error('Error fetching Lark data:', error);
+      setFetchError(error instanceof Error ? error.message : 'Không tải được dữ liệu từ Lark.');
       setLoading(false);
     }
   }, []);
