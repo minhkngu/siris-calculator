@@ -79,6 +79,14 @@ npm run build                  # Build production
 
 Trong Lark Developer Console, tạo ứng dụng nội bộ, cấp quyền đọc bản ghi Base, thêm ứng dụng vào Base Siris Web, rồi điền App ID và App Secret vào `.env`. Khởi động lại `npm run dev` sau khi đổi `.env`.
 
+## Triển khai trên Vercel
+
+Project Vercel sử dụng framework Vite, lệnh build `npm run build` và thư mục đầu ra `dist`. Đường dẫn `/api/hotel-data` được phục vụ bằng Node.js Vercel Function trong `api/hotel-data.js`, dùng chung phần đọc và kiểm tra dữ liệu Lark với máy chủ cục bộ.
+
+Thêm `LARK_APP_ID` và `LARK_APP_SECRET` vào Environment Variables của project cho môi trường **Production**, lưu dưới loại **Secret**, rồi triển khai lại. Không dùng tiền tố `VITE_` cho các giá trị này. Bí mật nằm phía máy chủ; file `.env` cục bộ không được đưa vào Git hay bản triển khai.
+
+Bộ nhớ đệm 30 giây và tenant access token được tái sử dụng trong mỗi instance còn hoạt động. Khi Vercel khởi tạo instance mới, máy chủ xác thực và đọc lại đủ 5 bảng trước khi trả dữ liệu.
+
 ## Các cột Lark Base được sử dụng
 
 ```sql
@@ -96,6 +104,8 @@ date_adjustments: date, type, amount, ispercentage, note
 
 -- items (vật dụng bồi thường)
 items: item_name, kind, quantity, unit_price
+```
+
 ## Kiểm tra code
 
 - `npm run typecheck`: kiểm tra kiểu dữ liệu và khai báo không sử dụng.

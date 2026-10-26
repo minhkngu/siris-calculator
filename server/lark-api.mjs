@@ -373,7 +373,7 @@ export function createHotelApiServer({ loadData = fetchHotelData } = {}) {
   });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (!process.env.VERCEL && process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const server = createHotelApiServer();
   server.listen(5174, '127.0.0.1', () => {
     process.stdout.write('Lark API local server listening at http://127.0.0.1:5174\n');
