@@ -85,7 +85,9 @@ Project Vercel sử dụng framework Vite, lệnh build `npm run build` và thư
 
 Thêm `LARK_APP_ID` và `LARK_APP_SECRET` vào Environment Variables của project cho môi trường **Production**, lưu dưới loại **Secret**, rồi triển khai lại. Không dùng tiền tố `VITE_` cho các giá trị này. Bí mật nằm phía máy chủ; file `.env` cục bộ không được đưa vào Git hay bản triển khai.
 
-Bộ nhớ đệm 30 giây và tenant access token được tái sử dụng trong mỗi instance còn hoạt động. Khi Vercel khởi tạo instance mới, máy chủ xác thực và đọc lại đủ 5 bảng trước khi trả dữ liệu.
+Function chạy tại Singapore (`sin1`). Phản hồi thành công được CDN Vercel lưu 30 giây; trình duyệt không lưu dữ liệu API và lỗi không được lưu đệm. Production không lưu thêm bộ dữ liệu trong instance để tránh cộng dồn thời gian đệm; bản cục bộ vẫn lưu trong bộ nhớ 30 giây.
+
+Tenant access token được tái sử dụng theo hạn Lark trả về. Các yêu cầu đồng thời trong cùng instance dùng chung một lần tải đủ 5 bảng, chỉ đọc các cột ứng dụng cần. Khi cache CDN hết hạn, API đọc dữ liệu mới và trả lỗi nếu không thể tải đủ dữ liệu hợp lệ.
 
 ## Các cột Lark Base được sử dụng
 

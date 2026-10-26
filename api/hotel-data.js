@@ -7,7 +7,10 @@ export async function GET() {
   };
 
   try {
-    return Response.json(await fetchHotelData(), { headers });
+    const data = await fetchHotelData({ cacheTtlMs: 0 });
+    return Response.json(data, {
+      headers: { ...headers, 'Vercel-CDN-Cache-Control': 'public, s-maxage=30' },
+    });
   } catch (error) {
     const knownError = error instanceof HotelDataError;
     if (!knownError) console.error('Unexpected error loading hotel data from Lark.');
@@ -15,7 +18,7 @@ export async function GET() {
       error: knownError ? error.message : 'Không thể tải dữ liệu Lark. Vui lòng thử lại.',
     }, {
       status: knownError ? error.status : 502,
-      headers,
+      headers: { ...headers, 'Vercel-CDN-Cache-Control': 'no-store' },
     });
   }
 }

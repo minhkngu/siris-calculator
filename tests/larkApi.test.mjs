@@ -5,6 +5,7 @@ import {
   fetchHotelData,
   getTenantAccessToken,
   normalizeHotelRecords,
+  TABLES,
 } from '../server/lark-api.mjs';
 
 const rows = {
@@ -94,6 +95,7 @@ test('fetches and caches a complete multi-page dataset from the five existing ta
       branches: 'tblnBd25IKxmXWUP', roomTypes: 'tbltQk4cUAgQh2jC', stayDiscounts: 'tbl25YrJ22bB7b7k',
       dateAdjustments: 'tblqrz52mKLrds4m', items: 'tblclDu4FlVGj33n',
     })[name] === tableId);
+    assert.deepEqual(JSON.parse(parsed.searchParams.get('field_names')), TABLES[key].fields);
     if (parsed.searchParams.has('page_token')) {
       return Response.json({ code: 0, data: { items: [rows[key][1]], has_more: false } });
     }
@@ -107,6 +109,55 @@ test('fetches and caches a complete multi-page dataset from the five existing ta
   assert.equal(first, second);
   assert.equal(first.roomTypes.length, 1);
   assert.equal(calls, callsAfterFirst);
+});
+
+function datasetFetcher(counts) {
+  return async url => {
+    const parsed = new URL(url);
+    if (parsed.pathname.endsWith('/auth/v3/tenant_access_token/internal')) {
+      counts.tokens += 1;
+      return Response.json({ code: 0, tenant_access_token: 'private-token', expire: 7200 });
+    }
+    counts.records += 1;
+    const tableId = parsed.pathname.split('/').at(-2);
+    const key = Object.keys(TABLES).find(key => TABLES[key].id === tableId);
+    return Response.json({ code: 0, data: { items: rows[key], has_more: false } });
+  };
+}
+
+test('concurrent dataset loads share one complete read of the five tables', async () => {
+  clearHotelDataCache();
+  const counts = { tokens: 0, records: 0 };
+  const options = { appId: 'app', appSecret: 'secret', fetchImpl: datasetFetcher(counts), cacheTtlMs: 0 };
+  const results = await Promise.all([fetchHotelData(options), fetchHotelData(options), fetchHotelData(options)]);
+  assert.equal(results[0], results[1]);
+  assert.equal(results[0], results[2]);
+  assert.deepEqual(counts, { tokens: 1, records: 5 });
+});
+
+test('production bypasses instance data caches while retaining the tenant token', async () => {
+  clearHotelDataCache();
+  const counts = { tokens: 0, records: 0 };
+  const options = { appId: 'app', appSecret: 'secret', fetchImpl: datasetFetcher(counts), now: () => 1_000_000 };
+  const cached = await fetchHotelData(options);
+  const fresh = await fetchHotelData({ ...options, cacheTtlMs: 0 });
+  const freshAgain = await fetchHotelData({ ...options, cacheTtlMs: 0 });
+  assert.notEqual(cached, fresh);
+  assert.notEqual(fresh, freshAgain);
+  assert.deepEqual(counts, { tokens: 1, records: 15 });
+});
+
+test('local dataset cache refreshes after 30 seconds', async () => {
+  clearHotelDataCache();
+  const counts = { tokens: 0, records: 0 };
+  let currentTime = 1_000_000;
+  const options = { appId: 'app', appSecret: 'secret', fetchImpl: datasetFetcher(counts), now: () => currentTime, cacheTtlMs: 30_000 };
+  const first = await fetchHotelData(options);
+  currentTime += 29_999;
+  assert.equal(await fetchHotelData(options), first);
+  currentTime += 1;
+  assert.notEqual(await fetchHotelData(options), first);
+  assert.deepEqual(counts, { tokens: 1, records: 10 });
 });
 
 test('refreshes expired tenant tokens using the API expiry time', async () => {
@@ -168,7 +219,11 @@ test('does not cache an incomplete dataset after a Lark permission error', async
     recordCalls += 1;
     return Response.json({ code: 99991672, msg: 'Access denied' }, { status: 403 });
   };
-  await assert.rejects(fetchHotelData({ appId: 'app', appSecret: 'secret', fetchImpl }), /quyền đọc Base/u);
+  const failedBatch = await Promise.allSettled(Array.from({ length: 3 }, () => fetchHotelData({ appId: 'app', appSecret: 'secret', fetchImpl })));
+  for (const result of failedBatch) {
+    assert.equal(result.status, 'rejected');
+    assert.match(result.reason.message, /quyền đọc Base/u);
+  }
   await assert.rejects(fetchHotelData({ appId: 'app', appSecret: 'secret', fetchImpl }), /quyền đọc Base/u);
   assert.equal(recordCalls, 10);
 });

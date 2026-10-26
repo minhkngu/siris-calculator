@@ -3,11 +3,11 @@ import { pathToFileURL } from 'node:url';
 
 export const LARK_BASE_TOKEN = 'KUKTbQ9cJao9oJsOuxIlDQtVgih';
 export const TABLES = {
-  branches: { id: 'tblnBd25IKxmXWUP', name: 'branches (cơ sở)' },
-  roomTypes: { id: 'tbltQk4cUAgQh2jC', name: 'room_types (loại phòng)' },
-  stayDiscounts: { id: 'tbl25YrJ22bB7b7k', name: 'stay_discounts (giảm giá lưu trú)' },
-  dateAdjustments: { id: 'tblqrz52mKLrds4m', name: 'date_adjustments (điều chỉnh theo ngày)' },
-  items: { id: 'tblclDu4FlVGj33n', name: 'items (vật dụng)' },
+  branches: { id: 'tblnBd25IKxmXWUP', name: 'branches (cơ sở)', fields: ['name', 'address'] },
+  roomTypes: { id: 'tbltQk4cUAgQh2jC', name: 'room_types (loại phòng)', fields: ['braches', 'name', 'weekdayprice', 'weekendprice', 'is_hidden'] },
+  stayDiscounts: { id: 'tbl25YrJ22bB7b7k', name: 'stay_discounts (giảm giá lưu trú)', fields: ['name', 'minnights', 'discountamount', 'ispercentage'] },
+  dateAdjustments: { id: 'tblqrz52mKLrds4m', name: 'date_adjustments (điều chỉnh theo ngày)', fields: ['date', 'type', 'amount', 'ispercentage', 'note'] },
+  items: { id: 'tblclDu4FlVGj33n', name: 'items (vật dụng)', fields: ['item_name', 'kind', 'quantity', 'unit_price'] },
 };
 
 const API_BASE = 'https://open.larksuite.com/open-apis';
@@ -17,6 +17,7 @@ let tokenCache;
 let tokenRequest;
 let dataCache;
 let dataCacheUntil = 0;
+let dataRequest;
 
 export class HotelDataError extends Error {
   constructor(message, status = 502) {
@@ -112,13 +113,14 @@ export async function getTenantAccessToken({ appId, appSecret, fetchImpl = fetch
   }
 }
 
-async function listRecords(tableId, tableName, token, fetchImpl = fetch, refreshToken) {
+async function listRecords(tableId, tableName, token, fetchImpl = fetch, refreshToken, fieldNames = []) {
   const records = [];
   let pageToken;
   const seenPageTokens = new Set();
   do {
     const url = new URL(`${API_BASE}/bitable/v1/apps/${LARK_BASE_TOKEN}/tables/${tableId}/records`);
     url.searchParams.set('page_size', '500');
+    if (fieldNames.length) url.searchParams.set('field_names', JSON.stringify(fieldNames));
     if (pageToken) url.searchParams.set('page_token', pageToken);
     let currentToken = token;
     let response;
@@ -314,27 +316,42 @@ export async function fetchHotelData({
   appSecret = process.env.LARK_APP_SECRET,
   fetchImpl = fetch,
   now = Date.now,
+  cacheTtlMs = process.env.VERCEL ? 0 : CACHE_MS,
 } = {}) {
   if (!appId || !appSecret) {
     throw new HotelDataError('Chưa cấu hình Lark API. Thêm LARK_APP_ID và LARK_APP_SECRET vào file .env rồi khởi động lại máy chủ.', 503);
   }
-  if (dataCache && dataCacheUntil > now()) return dataCache;
+  if (cacheTtlMs > 0 && dataCache && dataCacheUntil > now()) return dataCache;
 
-  const token = await getTenantAccessToken({ appId, appSecret, fetchImpl, now });
-  const entries = await Promise.all(Object.entries(TABLES).map(async ([key, table]) => {
-    const records = await listRecords(
-      table.id,
-      table.name,
-      token,
-      fetchImpl,
-      () => getTenantAccessToken({ appId, appSecret, fetchImpl, now }),
-    );
-    return [key, records];
-  }));
-  const completeData = normalizeHotelRecords(Object.fromEntries(entries));
-  dataCache = completeData;
-  dataCacheUntil = now() + CACHE_MS;
-  return completeData;
+  if (!dataRequest) {
+    dataRequest = (async () => {
+      const token = await getTenantAccessToken({ appId, appSecret, fetchImpl, now });
+      const entries = await Promise.all(Object.entries(TABLES).map(async ([key, table]) => {
+        const records = await listRecords(
+          table.id,
+          table.name,
+          token,
+          fetchImpl,
+          () => getTenantAccessToken({ appId, appSecret, fetchImpl, now }),
+          table.fields,
+        );
+        return [key, records];
+      }));
+      const completeData = normalizeHotelRecords(Object.fromEntries(entries));
+      if (cacheTtlMs > 0) {
+        dataCache = completeData;
+        dataCacheUntil = now() + cacheTtlMs;
+      }
+      return completeData;
+    })();
+  }
+
+  const currentRequest = dataRequest;
+  try {
+    return await currentRequest;
+  } finally {
+    if (dataRequest === currentRequest) dataRequest = undefined;
+  }
 }
 
 export function clearHotelDataCache() {
@@ -342,6 +359,7 @@ export function clearHotelDataCache() {
   tokenRequest = undefined;
   dataCache = undefined;
   dataCacheUntil = 0;
+  dataRequest = undefined;
 }
 
 function sendJson(response, status, body) {
