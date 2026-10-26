@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
 
-export const LARK_BASE_TOKEN = 'KUKTbQ9cJao9oJsOuxIlDQtVgih';
+export const LARK_BASE_TOKEN = process.env.LARK_BASE_TOKEN;
 export const TABLES = {
   branches: { id: 'tblnBd25IKxmXWUP', name: 'branches (cơ sở)', fields: ['name', 'address'] },
   roomTypes: { id: 'tbltQk4cUAgQh2jC', name: 'room_types (loại phòng)', fields: ['braches', 'name', 'weekdayprice', 'weekendprice', 'is_hidden'] },
@@ -13,6 +13,7 @@ export const TABLES = {
 const API_BASE = 'https://open.larksuite.com/open-apis';
 const CACHE_MS = 30_000;
 const REQUEST_TIMEOUT_MS = 12_000;
+const MAX_RETRY_DELAY_MS = 5_000;
 let tokenCache;
 let tokenRequest;
 let dataCache;
@@ -47,7 +48,7 @@ async function fetchJson(url, options = {}, fetchImpl = fetch) {
       });
     } catch (error) {
       if (attempt < 2 && (error.name === 'TimeoutError' || error.name === 'TypeError')) {
-        await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+        await waitBeforeRetry(attempt);
         continue;
       }
       throw new HotelDataError('Không kết nối được tới Lark. Kiểm tra mạng rồi thử lại.', 503);
@@ -58,7 +59,7 @@ async function fetchJson(url, options = {}, fetchImpl = fetch) {
     if (response.ok && (body?.code === undefined || code === 0)) return body;
 
     if (attempt < 2 && (response.status === 429 || response.status >= 500 || code === 99991400)) {
-      await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+      await waitBeforeRetry(attempt, response.headers.get('retry-after'));
       continue;
     }
 
@@ -68,6 +69,18 @@ async function fetchJson(url, options = {}, fetchImpl = fetch) {
     throw error;
   }
   throw new HotelDataError('Lark đang bận. Vui lòng tải lại sau ít phút.', 503);
+}
+
+async function waitBeforeRetry(attempt, retryAfter) {
+  const retryAfterMs = retryAfter && /^\d+(?:\.\d+)?$/u.test(retryAfter)
+    ? Number(retryAfter) * 1000
+    : retryAfter
+      ? Math.max(0, Date.parse(retryAfter) - Date.now())
+      : 0;
+  const exponentialDelay = Math.min(250 * (2 ** attempt), MAX_RETRY_DELAY_MS);
+  const jitteredDelay = Math.round(exponentialDelay * (0.5 + Math.random()));
+  const delay = Math.min(Math.max(jitteredDelay, retryAfterMs), MAX_RETRY_DELAY_MS);
+  await new Promise(resolve => setTimeout(resolve, delay));
 }
 
 export async function getTenantAccessToken({ appId, appSecret, fetchImpl = fetch, now = Date.now } = {}) {
