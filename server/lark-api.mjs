@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 export const LARK_BASE_TOKEN = process.env.LARK_BASE_TOKEN;
 export const TABLES = {
   branches: { id: 'tblnBd25IKxmXWUP', name: 'branches (cơ sở)', fields: ['name', 'address'] },
-  roomTypes: { id: 'tbltQk4cUAgQh2jC', name: 'room_types (loại phòng)', fields: ['braches', 'name', 'weekdayprice', 'weekendprice', 'is_hidden'] },
+  roomTypes: { id: 'tbltQk4cUAgQh2jC', name: 'room_types (loại phòng)', fields: ['branch', 'name', 'weekdayprice', 'weekendprice', 'is_hidden'] },
   stayDiscounts: { id: 'tbl25YrJ22bB7b7k', name: 'stay_discounts (giảm giá lưu trú)', fields: ['name', 'minnights', 'discountamount', 'ispercentage'] },
   dateAdjustments: { id: 'tblqrz52mKLrds4m', name: 'date_adjustments (điều chỉnh theo ngày)', fields: ['date', 'type', 'amount', 'ispercentage', 'note'] },
   items: { id: 'tblclDu4FlVGj33n', name: 'items (vật dụng)', fields: ['item_name', 'kind', 'quantity', 'unit_price'] },
@@ -281,9 +281,9 @@ export function normalizeHotelRecords(recordsByTable, scope = 'all') {
   });
   const branchIds = new Set(branches.map(branch => branch.id));
 
-  const roomTypes = populatedRecords(recordsByTable.roomTypes, ['name', 'braches', 'weekdayprice', 'weekendprice', 'is_hidden']).map(record => {
+  const roomTypes = populatedRecords(recordsByTable.roomTypes, ['name', 'branch', 'weekdayprice', 'weekendprice', 'is_hidden']).map(record => {
     const table = TABLES.roomTypes.name;
-    const links = readValue(record, 'braches', table, { required: true });
+    const links = readValue(record, 'branch', table, { required: true });
     const linkedIds = (Array.isArray(links) ? links : [links]).flatMap(link => {
       if (typeof link === 'string') return [link];
       if (link?.table_id && link.table_id !== TABLES.branches.id) return [];
@@ -292,7 +292,7 @@ export function normalizeHotelRecords(recordsByTable, scope = 'all') {
     const uniqueIds = [...new Set(linkedIds)];
     const branchId = uniqueIds[0];
     if (uniqueIds.length !== 1 || typeof branchId !== 'string' || !branchIds.has(branchId)) {
-      throw new HotelDataError(`Bảng “${table}”, bản ghi ${record.record_id}: liên kết “braches” không trỏ tới cơ sở hợp lệ.`);
+      throw new HotelDataError(`Bảng “${table}”, bản ghi ${record.record_id}: liên kết “branch” không trỏ tới cơ sở hợp lệ.`);
     }
     return {
       id: recordId(record, table),

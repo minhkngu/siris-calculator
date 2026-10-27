@@ -98,7 +98,7 @@ API hỗ trợ `scope=room` (4 bảng giá phòng), `scope=items` (bảng vật 
 branches: name, address (Lark `record_id` là ID dùng trong ứng dụng)
 
 -- room_types
-room_types: braches (liên kết đến branches), name, weekdayprice, weekendprice, is_hidden
+room_types: branch (liên kết đến branches), name, weekdayprice, weekendprice, is_hidden
 
 -- stay_discounts
 stay_discounts: name, minnights, discountamount, ispercentage

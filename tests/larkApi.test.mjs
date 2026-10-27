@@ -12,8 +12,8 @@ import {
 const rows = {
   branches: [{ record_id: 'branch-1', fields: { name: 'Siris', address: 'Đà Nẵng' } }],
   roomTypes: [
-    { record_id: 'room-1', fields: { braches: [{ record_id: 'branch-1', text: 'Siris' }], name: 'Deluxe', weekdayprice: 0, weekendprice: 1500000, is_hidden: 'false' } },
-    { record_id: 'room-hidden', fields: { braches: [{ record_id: 'branch-1' }], name: 'Hidden', weekdayprice: 1000000, weekendprice: 1200000, is_hidden: 'true' } },
+    { record_id: 'room-1', fields: { branch: [{ record_id: 'branch-1', text: 'Siris' }], name: 'Deluxe', weekdayprice: 0, weekendprice: 1500000, is_hidden: 'false' } },
+    { record_id: 'room-hidden', fields: { branch: [{ record_id: 'branch-1' }], name: 'Hidden', weekdayprice: 1000000, weekendprice: 1200000, is_hidden: 'true' } },
   ],
   stayDiscounts: [{ record_id: 'discount-1', fields: { name: 'Long stay', minnights: 3, discountamount: 10, ispercentage: 'true' } }],
   dateAdjustments: [{ record_id: 'adjustment-1', fields: { date: Date.UTC(2026, 9, 25, 17), type: 'surcharge', amount: 50000, ispercentage: 'false', note: 'Holiday' } }],
@@ -34,11 +34,11 @@ test('normalizes existing Lark rows, linked branches, booleans, zero prices and 
 test('rejects unlinked rooms and invalid prices with record context', () => {
   assert.throws(() => normalizeHotelRecords({
     ...rows,
-    roomTypes: [{ record_id: 'broken-room', fields: { braches: [{ record_id: 'missing-branch' }], name: 'Broken', weekdayprice: 1, weekendprice: 1 } }],
-  }), /room_types.*broken-room.*braches/u);
+    roomTypes: [{ record_id: 'broken-room', fields: { branch: [{ record_id: 'missing-branch' }], name: 'Broken', weekdayprice: 1, weekendprice: 1 } }],
+  }), /room_types.*broken-room.*branch/u);
   assert.throws(() => normalizeHotelRecords({
     ...rows,
-    roomTypes: [{ record_id: 'bad-price', fields: { braches: [{ record_id: 'branch-1' }], name: 'Broken', weekdayprice: 'unknown', weekendprice: 1 } }],
+    roomTypes: [{ record_id: 'bad-price', fields: { branch: [{ record_id: 'branch-1' }], name: 'Broken', weekdayprice: 'unknown', weekendprice: 1 } }],
   }), /room_types.*bad-price.*weekdayprice/u);
 });
 
@@ -46,7 +46,7 @@ test('reads actual Lark record_ids links and skips only empty placeholder rows',
   const data = normalizeHotelRecords({
     ...rows,
     branches: [...rows.branches, { record_id: 'empty-branch', fields: { room_types: [{ text_arr: [] }] } }],
-    roomTypes: [{ ...rows.roomTypes[0], fields: { ...rows.roomTypes[0].fields, braches: [{ record_ids: ['branch-1'], table_id: 'tblnBd25IKxmXWUP' }] } }],
+    roomTypes: [{ ...rows.roomTypes[0], fields: { ...rows.roomTypes[0].fields, branch: [{ record_ids: ['branch-1'], table_id: 'tblnBd25IKxmXWUP' }] } }],
     stayDiscounts: [...rows.stayDiscounts, { record_id: 'empty-discount', fields: { id: '2' } }],
   });
   assert.equal(data.roomTypes[0].branchId, 'branch-1');
@@ -58,8 +58,8 @@ test('reads actual Lark record_ids links and skips only empty placeholder rows',
   }), /partial-room/u);
   assert.throws(() => normalizeHotelRecords({
     ...rows,
-    roomTypes: [{ ...rows.roomTypes[0], fields: { ...rows.roomTypes[0].fields, braches: [{ record_ids: ['branch-1', 'another-branch'] }] } }],
-  }), /braches/u);
+    roomTypes: [{ ...rows.roomTypes[0], fields: { ...rows.roomTypes[0].fields, branch: [{ record_ids: ['branch-1', 'another-branch'] }] } }],
+  }), /branch/u);
 });
 
 test('rejects invalid dates and unsupported boolean strings', () => {
