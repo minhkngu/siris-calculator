@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   clearHotelDataCache,
+  createHotelApiServer,
   fetchHotelData,
   getTenantAccessToken,
   normalizeHotelRecords,
@@ -234,4 +235,82 @@ test('does not cache an incomplete dataset after a Lark permission error', async
   }
   await assert.rejects(fetchHotelData({ appId: 'app', appSecret: 'secret', fetchImpl }), /quyền đọc Base/u);
   assert.equal(recordCalls, 10);
+});
+
+test('scoped requests read only their tables, deduplicate per scope and keep caches separate', async () => {
+  clearHotelDataCache();
+  const counts = { tokens: 0, records: 0 };
+  const options = { appId: 'app', appSecret: 'secret', fetchImpl: datasetFetcher(counts), cacheTtlMs: 30_000 };
+  const [room, sameRoom, items] = await Promise.all([
+    fetchHotelData({ ...options, scope: 'room' }),
+    fetchHotelData({ ...options, scope: 'room' }),
+    fetchHotelData({ ...options, scope: 'items' }),
+  ]);
+  assert.equal(room, sameRoom);
+  assert.deepEqual(Object.keys(room), ['branches', 'roomTypes', 'stayDiscounts', 'dateAdjustments']);
+  assert.deepEqual(Object.keys(items), ['items']);
+  assert.equal(room.roomTypes[0].id, 'room-1');
+  assert.equal(items.items[0].id, 'item-1');
+  assert.deepEqual(counts, { tokens: 1, records: 5 });
+  assert.equal(await fetchHotelData({ ...options, scope: 'items' }), items);
+  assert.equal(await fetchHotelData({ ...options, scope: 'room' }), room);
+  assert.equal(counts.records, 5);
+  assert.deepEqual(Object.keys(await fetchHotelData(options)), Object.keys(TABLES));
+  assert.equal(counts.records, 10);
+});
+
+test('scope validation rejects invalid scopes and missing requested tables', async () => {
+  await assert.rejects(fetchHotelData({ scope: 'invalid' }), error => error.status === 400);
+  assert.throws(() => normalizeHotelRecords({ ...rows, items: undefined }, 'items'), /chưa trả đủ/u);
+  assert.throws(() => normalizeHotelRecords({ ...rows, roomTypes: undefined }, 'room'), /chưa trả đủ/u);
+  const invalidItems = { ...rows, items: [{ record_id: 'broken-item', fields: { item_name: 'Broken' } }] };
+  assert.equal(normalizeHotelRecords(invalidItems, 'room').roomTypes.length, 1);
+  assert.throws(() => normalizeHotelRecords(invalidItems, 'items'), /broken-item/u);
+  assert.deepEqual(Object.keys(normalizeHotelRecords({ items: rows.items }, 'items')), ['items']);
+});
+
+test('an items permission error does not block room loading and is not cached', async () => {
+  clearHotelDataCache();
+  const counts = { tokens: 0, records: 0 };
+  const original = datasetFetcher(counts);
+  let denyItems = true;
+  const options = { appId: 'app', appSecret: 'secret', fetchImpl: async url => {
+    if (denyItems && String(url).includes(TABLES.items.id)) return Response.json({ code: 99991672 }, { status: 403 });
+    return original(url);
+  } };
+  const [room, items] = await Promise.allSettled([
+    fetchHotelData({ ...options, scope: 'room' }), fetchHotelData({ ...options, scope: 'items' }),
+  ]);
+  assert.equal(room.status, 'fulfilled');
+  assert.equal(items.status, 'rejected');
+  denyItems = false;
+  assert.equal((await fetchHotelData({ ...options, scope: 'items' })).items[0].id, 'item-1');
+});
+
+test('rejects a missing Lark table payload instead of accepting an empty table', async () => {
+  clearHotelDataCache();
+  const fetchImpl = async url => new URL(url).pathname.includes('/auth/')
+    ? Response.json({ code: 0, tenant_access_token: 'token', expire: 7200 })
+    : Response.json({ code: 0, data: {} });
+  await assert.rejects(fetchHotelData({ scope: 'items', appId: 'app', appSecret: 'secret', fetchImpl }), /chưa trả đủ/u);
+});
+
+
+test('local API parses scoped URLs and defaults to all', async () => {
+  const scopes = [];
+  const server = createHotelApiServer({ loadData: async ({ scope }) => { scopes.push(scope); return { scope }; } });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    for (const scope of ['room', 'items', 'all']) {
+      const response = await fetch(`${origin}/api/hotel-data?scope=${scope}`);
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), { scope });
+    }
+    assert.deepEqual(await (await fetch(`${origin}/api/hotel-data`)).json(), { scope: 'all' });
+    assert.equal((await fetch(`${origin}/api/hotel-data?scope=bad`)).status, 400);
+    assert.deepEqual(scopes, ['room', 'items', 'all', 'all']);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
 });

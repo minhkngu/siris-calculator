@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Calculator, Tag, Percent, Check, ChevronDown, Copy } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
+import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
 import { CalculationResult, GlobalAdjustment, EarlyCheckinLateCheckoutType } from './types';
 import { EarlyLateOptions } from './EarlyLateOptions';
@@ -130,7 +131,7 @@ export function PriceSummary({
 
                         <AnimatePresence>
                             {showNightlyDetails && (
-                                <motion.div
+                                <AnimatedPanel
                                     initial={{ height: 0, opacity: 0 }}
                                     animate={{ height: 'auto', opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
@@ -195,7 +196,7 @@ export function PriceSummary({
                                             );
                                         })}
                                     </div>
-                                </motion.div>
+                                </AnimatedPanel>
                             )}
                         </AnimatePresence>
                     </div>

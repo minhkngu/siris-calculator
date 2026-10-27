@@ -75,7 +75,7 @@ npm run build                  # Build production
 
 ## Lark Base
 
-Ứng dụng đọc dữ liệu từ Base **Siris Web**, gồm các bảng `branches`, `room_types`, `stay_discounts`, `date_adjustments` và `items`. Máy chủ Node.js trên máy tính gọi Lark Open API, còn trình duyệt chỉ gọi `/api/hotel-data`; App Secret và access token không được gửi xuống trình duyệt.
+Ứng dụng đọc dữ liệu từ Base **Siris Web**, gồm các bảng `branches`, `room_types`, `stay_discounts`, `date_adjustments` và `items`. Máy chủ Node.js trên máy tính gọi Lark Open API, còn trình duyệt gọi `/api/hotel-data?scope=room` hoặc `?scope=items` theo tab đang dùng; App Secret và access token không được gửi xuống trình duyệt.
 
 Trong Lark Developer Console, tạo ứng dụng nội bộ, cấp quyền đọc bản ghi Base, thêm ứng dụng vào Base Siris Web, rồi điền App ID, App Secret và Base token vào `.env`. Khởi động lại `npm run dev` sau khi đổi `.env`.
 
@@ -89,7 +89,7 @@ Function chạy tại Singapore (`sin1`). Phản hồi thành công được CDN
 
 Tenant access token được tái sử dụng theo hạn Lark trả về. Trên Vercel, token được mã hóa AES-256-GCM bằng khóa dẫn xuất từ App Secret và lưu trong Runtime Cache theo project, môi trường và thông tin xác thực để instance mới không cần xác thực lại. Token được bỏ trước hạn 60 giây; nếu Lark từ chối token, API xác thực lại và thay bản cache. Cache lỗi hoặc quá 500 ms thì tiếp tục xác thực trực tiếp với Lark. Không lưu App Secret trong cache hoặc trả token xuống trình duyệt.
 
-Các yêu cầu đồng thời trong cùng instance dùng chung một lần tải đủ 5 bảng, chỉ đọc các cột ứng dụng cần. Khi cache CDN hết hạn, API đọc dữ liệu mới và trả lỗi nếu không thể tải đủ dữ liệu hợp lệ. Header `Server-Timing` và log `hotel-data-load` chỉ ghi tổng thời gian xử lý, không ghi nội dung dữ liệu hoặc token.
+API hỗ trợ `scope=room` (4 bảng giá phòng), `scope=items` (bảng vật dụng), và `scope=all` (mặc định, đủ 5 bảng để tương thích). Giá trị khác trả HTTP 400 và không cache. Mỗi nhóm chỉ trả các trường dữ liệu tương ứng. Các yêu cầu đồng thời trong cùng instance dùng chung một lượt tải cho từng scope; cache cục bộ cũng tách theo scope, chỉ đọc các cột ứng dụng cần. Khi cache CDN hết hạn, API đọc dữ liệu mới và trả lỗi nếu không thể tải đủ dữ liệu hợp lệ của nhóm được yêu cầu. Header `Server-Timing` và log `hotel-data-load` chỉ ghi thời gian xử lý và scope, không ghi nội dung dữ liệu hoặc token.
 
 ## Các cột Lark Base được sử dụng
 
@@ -115,3 +115,17 @@ items: item_name, kind, quantity, unit_price
 - `npm run typecheck`: kiểm tra kiểu dữ liệu và khai báo không sử dụng.
 - `npm test`: kiểm tra công thức tính giá phòng (yêu cầu Node.js 22.6+ hỗ trợ `--experimental-strip-types`).
 - `npm run build`: tạo bản production.
+
+## Tối ưu tải trang
+
+- Yêu cầu dữ liệu bắt đầu ngay từ HTML, song song với tải JavaScript. Tab được xác định từ lựa chọn đã lưu trong phiên; không lưu dữ liệu giá vào trình duyệt.
+- Giao diện hiển thị tiêu đề và thanh chuyển tab trong lúc chờ. Mỗi nhóm dữ liệu có trạng thái tải/lỗi riêng; nút “Thử lại” chỉ tải lại nhóm bị lỗi.
+- Tab bồi thường, chế độ nhiều phòng, lịch và tính năng hiệu ứng được tải khi cần. Lỗi tải mã có nút tải lại trang.
+- Lựa chọn của nhóm chưa tải được giữ trong phiên và chỉ được kiểm tra/khôi phục khi nhóm đó tải thành công. Chuyển tab không khôi phục lại lựa chọn cũ đè lên thao tác mới.
+- Kết quả đo và giới hạn: [PERFORMANCE.md](PERFORMANCE.md).
+
+### Kiểm tra trình duyệt
+
+Sau `npm run build`, chạy `node scripts/check-browser.mjs` trong môi trường có Playwright và Chrome. Không thêm thư viện vào dependencies ứng dụng. Nếu Playwright được cung cấp từ bên ngoài dự án, đặt `PLAYWRIGHT_MODULE` thành đường dẫn module `playwright/index.mjs`; dùng `BROWSER_CHANNEL` nếu cần đổi kênh trình duyệt (mặc định `chrome`).
+
+Bài kiểm tra mặc định dùng dữ liệu giả lập và chỉ mở máy chủ trên `127.0.0.1`. Nó kiểm tra mã tải theo tính năng, lịch, VAT, nhiều phòng, vật dụng, khôi phục phiên, lỗi độc lập và lỗi tải mã. Đặt `PERF_BEFORE_DIR` trỏ đến thư mục build trước thay đổi để đo mỗi bản 5 lượt mở mới và tải lại; thêm `PERF_LIVE=1` và chạy Node với `--env-file=.env` để đọc Lark thật. Kết quả chỉ chứa thời gian và dung lượng, ghi vào `/tmp/hotel-performance.json`.

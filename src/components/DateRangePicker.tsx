@@ -1,10 +1,12 @@
+import { lazy } from 'react';
 import { format, addDays, parseISO } from 'date-fns';
-import { vi } from 'date-fns/locale';
-import { DayPicker } from 'react-day-picker';
-import 'react-day-picker/dist/style.css';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
+import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
 import { CalculationResult } from './types';
+
+import { FeatureBoundary } from './FeatureBoundary';
+const CalendarPicker = lazy(() => import('./CalendarPicker'));
 
 interface DateRangePickerProps {
     checkIn: string;
@@ -55,7 +57,7 @@ export function DateRangePicker({ checkIn, checkOut, showDatePicker, calculation
                 {showDatePicker && (
                     <>
                         <div className="fixed inset-0 z-40" onClick={onClose} />
-                        <motion.div
+                        <AnimatedPanel
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 10 }}
@@ -64,7 +66,7 @@ export function DateRangePicker({ checkIn, checkOut, showDatePicker, calculation
                                 showDatePicker === 'checkIn' ? "md:left-0 md:right-auto" : "md:right-0 md:left-auto"
                             )}
                         >
-                            <DayPicker
+                            <FeatureBoundary><CalendarPicker
                                 mode="single"
                                 captionLayout="dropdown"
                                 fromYear={2020}
@@ -76,11 +78,11 @@ export function DateRangePicker({ checkIn, checkOut, showDatePicker, calculation
                                         onClose();
                                     }
                                 }}
-                                locale={vi}
-                                disabled={showDatePicker === 'checkOut' && checkIn ? { before: addDays(parseISO(checkIn), 1) } : undefined}
-                            />
 
-                        </motion.div>
+                                disabled={showDatePicker === 'checkOut' && checkIn ? { before: addDays(parseISO(checkIn), 1) } : undefined}
+                            /></FeatureBoundary>
+
+                        </AnimatedPanel>
                     </>
                 )}
             </AnimatePresence>

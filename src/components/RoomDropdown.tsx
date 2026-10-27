@@ -1,5 +1,6 @@
 import { Hotel, ChevronDown, Check } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
+import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
 import { RoomType } from './types';
 
@@ -48,7 +49,7 @@ export function RoomDropdown({ roomTypes, selectedRoomId, showDropdown, onToggle
                 {showDropdown && (
                     <>
                         <div className="fixed inset-0 z-40" onClick={onToggle} />
-                        <motion.div
+                        <AnimatedPanel
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 10 }}
@@ -86,7 +87,7 @@ export function RoomDropdown({ roomTypes, selectedRoomId, showDropdown, onToggle
                                     ))
                                 )}
                             </div>
-                        </motion.div>
+                        </AnimatedPanel>
                     </>
                 )}
             </AnimatePresence>

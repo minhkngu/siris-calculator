@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { lazy, useState } from 'react';
 import { Plus, Trash2, Copy, Building, Hotel, Calendar, Clock, ChevronDown, ChevronUp, Layers, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Branch, RoomType, SelectedRoomItem, EarlyCheckinLateCheckoutType, EARLY_LATE_OPTIONS, MultiRoomTotalSummary } from './types';
-import { DayPicker } from 'react-day-picker';
-import 'react-day-picker/dist/style.css';
 import { cn } from '../lib/utils';
 import { format, parseISO, addDays, getDay, isValid } from 'date-fns';
-import { vi } from 'date-fns/locale';
+
+import { FeatureBoundary } from './FeatureBoundary';
+const CalendarPicker = lazy(() => import('./CalendarPicker'));
 
 interface MultiRoomSelectorProps {
     rooms: SelectedRoomItem[];
@@ -353,7 +353,7 @@ export function MultiRoomSelector({
                                                     exit={{ opacity: 0, y: 10 }}
                                                     className="absolute top-full right-0 mt-2 bg-white shadow-2xl rounded-2xl border border-slate-200 p-4 z-50 flex justify-center"
                                                 >
-                                                    <DayPicker
+                                                    <FeatureBoundary><CalendarPicker
                                                         mode="single"
                                                         captionLayout="dropdown"
                                                         fromYear={2020}
@@ -374,13 +374,13 @@ export function MultiRoomSelector({
                                                                 setOpenDatePickerIndex(null);
                                                             }
                                                         }}
-                                                        locale={vi}
+
                                                         disabled={
                                                             openDatePickerIndex.type === 'checkOut' && roomItem.checkIn
                                                                 ? { before: addDays(parseISO(roomItem.checkIn), 1) }
                                                                 : undefined
                                                         }
-                                                    />
+                                                    /></FeatureBoundary>
 
                                                 </motion.div>
                                             </>

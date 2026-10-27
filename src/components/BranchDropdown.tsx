@@ -1,5 +1,6 @@
 import { Building, ChevronDown, Check } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
+import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
 import { Branch } from './types';
 
@@ -56,7 +57,7 @@ export function BranchDropdown({ branches, selectedBranchId, showDropdown, onTog
                 {showDropdown && (
                     <>
                         <div className="fixed inset-0 z-40" onClick={onToggle} />
-                        <motion.div
+                        <AnimatedPanel
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 10 }}
@@ -89,7 +90,7 @@ export function BranchDropdown({ branches, selectedBranchId, showDropdown, onTog
                                     );
                                 })}
                             </div>
-                        </motion.div>
+                        </AnimatedPanel>
                     </>
                 )}
             </AnimatePresence>

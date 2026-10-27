@@ -16,9 +16,19 @@ const REQUEST_TIMEOUT_MS = 12_000;
 const MAX_RETRY_DELAY_MS = 5_000;
 let tokenCache;
 let tokenRequest;
-let dataCache;
-let dataCacheUntil = 0;
-let dataRequest;
+const dataCaches = new Map();
+const dataRequests = new Map();
+
+export function parseHotelDataScope(scope = 'all') {
+  if (!['room', 'items', 'all'].includes(scope)) {
+    throw new HotelDataError('scope phải là room, items hoặc all.', 400);
+  }
+  return scope;
+}
+
+function scopeKeys(scope) {
+  return Object.keys(TABLES).filter(key => scope === 'all' || (scope === 'items' ? key === 'items' : key !== 'items'));
+}
 
 export class HotelDataError extends Error {
   constructor(message, status = 502) {
@@ -153,8 +163,11 @@ async function listRecords(tableId, tableName, token, fetchImpl = fetch, refresh
       currentToken = await refreshToken();
       response = await fetchJson(url, { headers: { Authorization: `Bearer ${currentToken}` } }, fetchImpl);
     }
-    const page = response.data ?? {};
-    records.push(...(page.items ?? page.records ?? []));
+    const page = response?.data;
+    if (!page || !Array.isArray(page.items ?? page.records)) {
+      throw new HotelDataError(`Lark chưa trả đủ dữ liệu bảng “${tableName}”.`);
+    }
+    records.push(...(page.items ?? page.records));
     if (page.has_more && !page.page_token) {
       throw new HotelDataError(`Lark chưa trả mã trang kế tiếp cho bảng “${tableName}”; dừng để tránh dùng dữ liệu thiếu.`);
     }
@@ -251,7 +264,13 @@ function populatedRecords(records, fields) {
   }));
 }
 
-export function normalizeHotelRecords(recordsByTable) {
+export function normalizeHotelRecords(recordsByTable, scope = 'all') {
+  const keys = scopeKeys(parseHotelDataScope(scope));
+  for (const key of keys) {
+    if (!Array.isArray(recordsByTable[key])) throw new HotelDataError(`Lark chưa trả đủ dữ liệu bảng “${TABLES[key].name}”.`);
+  }
+  // Unrequested tables are empty only inside normalization, never in the response.
+  recordsByTable = Object.fromEntries(Object.keys(TABLES).map(key => [key, keys.includes(key) ? recordsByTable[key] : []]));
   const branches = populatedRecords(recordsByTable.branches, ['name', 'address']).map(record => {
     const table = TABLES.branches.name;
     return {
@@ -323,16 +342,18 @@ export function normalizeHotelRecords(recordsByTable) {
     };
   });
 
-  return {
+  const normalized = {
     branches,
     roomTypes: roomTypes.filter(room => !room.isHidden).sort((a, b) => a.weekdayPrice - b.weekdayPrice),
     stayDiscounts: stayDiscounts.sort((a, b) => b.minNights - a.minNights),
     dateAdjustments,
     items,
   };
+  return Object.fromEntries(keys.map(key => [key, normalized[key]]));
 }
 
 export async function fetchHotelData({
+  scope = 'all',
   appId = process.env.LARK_APP_ID,
   appSecret = process.env.LARK_APP_SECRET,
   fetchImpl = fetch,
@@ -340,15 +361,18 @@ export async function fetchHotelData({
   tokenStore,
   cacheTtlMs = process.env.VERCEL ? 0 : CACHE_MS,
 } = {}) {
+  parseHotelDataScope(scope);
   if (!appId || !appSecret) {
     throw new HotelDataError('Chưa cấu hình Lark API. Thêm LARK_APP_ID và LARK_APP_SECRET vào file .env rồi khởi động lại máy chủ.', 503);
   }
-  if (cacheTtlMs > 0 && dataCache && dataCacheUntil > now()) return dataCache;
+  const cached = dataCaches.get(scope);
+  if (cacheTtlMs > 0 && cached && cached.until > now()) return cached.data;
 
-  if (!dataRequest) {
-    dataRequest = (async () => {
+  if (!dataRequests.has(scope)) {
+    dataRequests.set(scope, (async () => {
       const token = await getTenantAccessToken({ appId, appSecret, fetchImpl, now, tokenStore });
-      const entries = await Promise.all(Object.entries(TABLES).map(async ([key, table]) => {
+      const entries = await Promise.all(scopeKeys(scope).map(async key => {
+        const table = TABLES[key];
         const records = await listRecords(
           table.id,
           table.name,
@@ -359,29 +383,27 @@ export async function fetchHotelData({
         );
         return [key, records];
       }));
-      const completeData = normalizeHotelRecords(Object.fromEntries(entries));
+      const completeData = normalizeHotelRecords(Object.fromEntries(entries), scope);
       if (cacheTtlMs > 0) {
-        dataCache = completeData;
-        dataCacheUntil = now() + cacheTtlMs;
+        dataCaches.set(scope, { data: completeData, until: now() + cacheTtlMs });
       }
       return completeData;
-    })();
+    })());
   }
 
-  const currentRequest = dataRequest;
+  const currentRequest = dataRequests.get(scope);
   try {
     return await currentRequest;
   } finally {
-    if (dataRequest === currentRequest) dataRequest = undefined;
+    if (dataRequests.get(scope) === currentRequest) dataRequests.delete(scope);
   }
 }
 
 export function clearHotelDataCache() {
   tokenCache = undefined;
   tokenRequest = undefined;
-  dataCache = undefined;
-  dataCacheUntil = 0;
-  dataRequest = undefined;
+  dataCaches.clear();
+  dataRequests.clear();
 }
 
 function sendJson(response, status, body) {
@@ -400,12 +422,14 @@ export function createHotelApiServer({ loadData = fetchHotelData } = {}) {
       sendJson(response, 403, { error: 'Chỉ cho phép kết nối từ máy tính này.' });
       return;
     }
-    if (request.method !== 'GET' || request.url !== '/api/hotel-data') {
+    const url = new URL(request.url, 'http://localhost');
+    if (request.method !== 'GET' || url.pathname !== '/api/hotel-data') {
       sendJson(response, 404, { error: 'Không tìm thấy API.' });
       return;
     }
     try {
-      sendJson(response, 200, await loadData());
+      const scope = parseHotelDataScope(url.searchParams.get('scope') ?? undefined);
+      sendJson(response, 200, await loadData({ scope }));
     } catch (error) {
       const status = error instanceof HotelDataError ? error.status : 502;
       sendJson(response, status, { error: error instanceof Error ? error.message : 'Không thể tải dữ liệu Lark.' });

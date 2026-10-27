@@ -1,7 +1,7 @@
-import { fetchHotelData, HotelDataError } from '../server/lark-api.mjs';
+import { fetchHotelData, HotelDataError, parseHotelDataScope } from '../server/lark-api.mjs';
 import { createLarkTokenStore } from '../server/lark-token-store.mjs';
 
-export async function GET() {
+export async function GET(request) {
   const started = performance.now();
   const headers = {
     'Cache-Control': 'no-store',
@@ -9,13 +9,14 @@ export async function GET() {
   };
 
   try {
+    const scope = parseHotelDataScope(request ? new URL(request.url).searchParams.get('scope') ?? undefined : undefined);
     const tokenStore = process.env.VERCEL ? createLarkTokenStore({
       appId: process.env.LARK_APP_ID,
       appSecret: process.env.LARK_APP_SECRET,
     }) : undefined;
-    const data = await fetchHotelData({ cacheTtlMs: 0, tokenStore });
+    const data = await fetchHotelData({ scope, cacheTtlMs: 0, tokenStore });
     const durationMs = Math.round(performance.now() - started);
-    console.info(JSON.stringify({ event: 'hotel-data-load', durationMs }));
+    console.info(JSON.stringify({ event: 'hotel-data-load', scope, durationMs }));
     return Response.json(data, {
       headers: {
         ...headers,

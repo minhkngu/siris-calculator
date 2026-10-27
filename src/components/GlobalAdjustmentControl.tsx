@@ -1,5 +1,6 @@
 import { ChevronDown, Percent, DollarSign } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
+import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
 import { GlobalAdjustment } from '../components/types';
 
@@ -44,7 +45,7 @@ export function GlobalAdjustmentControl({
                             {showDropdown && (
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={onCloseDropdown} />
-                                    <motion.div
+                                    <AnimatedPanel
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: 10 }}
@@ -70,7 +71,7 @@ export function GlobalAdjustmentControl({
                                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
                                             Giảm giá
                                         </button>
-                                    </motion.div>
+                                    </AnimatedPanel>
                                 </>
                             )}
                         </AnimatePresence>
