@@ -34,6 +34,7 @@ export interface GlobalAdjustment {
     type: 'surcharge' | 'discount';
     amount: number;
     isPercentage: boolean;
+    preset?: 'google_reviews';
 }
 
 export type EarlyCheckinLateCheckoutType =

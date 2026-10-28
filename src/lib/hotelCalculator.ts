@@ -77,16 +77,6 @@ export function calculateForRoomLogic(
 
     let finalTotal = totalBase - stayDiscountValue;
 
-    const globalValue = globalAdjustment.isPercentage
-        ? Math.round(totalBase * globalAdjustment.amount / 100)
-        : globalAdjustment.amount;
-
-    if (globalAdjustment.type === 'surcharge') {
-        finalTotal += globalValue;
-    } else {
-        finalTotal -= globalValue;
-    }
-
     // Calculate early check-in / late check-out fees
     const lateCheckin = earlyLateOptions.has('checkin_2200');
     let earlyLateTotal = lateCheckin ? -Math.round(breakdown[0].finalPrice * 20 / 100) : 0;
@@ -113,6 +103,13 @@ export function calculateForRoomLogic(
     }
 
     finalTotal += earlyLateTotal;
+
+    const globalValue = globalAdjustment.preset === 'google_reviews'
+        ? Math.min(70000, Math.round(Math.max(0, finalTotal) * 0.1))
+        : globalAdjustment.isPercentage
+            ? Math.round(totalBase * globalAdjustment.amount / 100)
+            : globalAdjustment.amount;
+    finalTotal += globalAdjustment.type === 'surcharge' ? globalValue : -globalValue;
 
     let vatValue = 0;
     if (includeVAT) {
@@ -196,7 +193,9 @@ export function calculateMultiRoomLogic(
     const combinedSubtotal = totalBase - totalStayDiscounts + totalEarlyLate;
 
     // Apply global adjustment on combined subtotal
-    const globalValue = globalAdjustment.isPercentage
+    const globalValue = globalAdjustment.preset === 'google_reviews'
+        ? Math.min(70000, Math.round(Math.max(0, combinedSubtotal) * 0.1))
+        : globalAdjustment.isPercentage
         ? Math.round(combinedSubtotal * globalAdjustment.amount / 100)
         : globalAdjustment.amount;
 

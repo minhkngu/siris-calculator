@@ -77,7 +77,7 @@ export function MultiRoomSummary({
             text += `• Điều chỉnh check-in/check-out: ${summary.totalEarlyLate > 0 ? '+' : ''}${formatCurrency(summary.totalEarlyLate)}\n`;
         }
         if (globalAdjustment.amount > 0) {
-            text += `• ${globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'}: ${globalAdjustment.type === 'surcharge' ? '+' : '-'}${formatCurrency(summary.globalAdjustmentValue)}\n`;
+            text += `• ${globalAdjustment.preset === 'google_reviews' ? 'Giảm giá Google Maps Reviews' : globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'}: ${globalAdjustment.type === 'surcharge' ? '+' : '-'}${formatCurrency(summary.globalAdjustmentValue)}\n`;
         }
         if (includeVAT) {
             text += `• Thuế VAT (${vatRate}%): +${formatCurrency(summary.vatValue)}\n`;
@@ -247,7 +247,7 @@ export function MultiRoomSummary({
                     )}>
                         <div className="flex items-center gap-1.5">
                             <Tag size={12} />
-                            <span>{globalAdjustment.type === 'surcharge' ? 'Phụ thu tổng' : 'Giảm giá tổng'} {globalAdjustment.isPercentage ? `(${globalAdjustment.amount}%)` : ''}</span>
+                            <span>{globalAdjustment.preset === 'google_reviews' ? 'Google Maps Reviews (10%, tối đa 70.000đ)' : `${globalAdjustment.type === 'surcharge' ? 'Phụ thu tổng' : 'Giảm giá tổng'} ${globalAdjustment.isPercentage ? `(${globalAdjustment.amount}%)` : ''}`}</span>
                         </div>
                         <span className="font-bold">
                             {globalAdjustment.type === 'surcharge' ? '+' : '-'} {formatCurrency(summary.globalAdjustmentValue)}

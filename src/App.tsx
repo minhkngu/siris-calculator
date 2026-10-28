@@ -646,7 +646,8 @@ export default function App() {
                           showDropdown={showGlobalAdjTypeDropdown}
                           onToggleDropdown={() => setShowGlobalAdjTypeDropdown(!showGlobalAdjTypeDropdown)}
                           onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
-                          onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type })}
+                          onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type, preset: undefined })}
+                          onGoogleReviews={() => setGlobalAdjustment({ type: 'discount', amount: 10, isPercentage: true, preset: 'google_reviews' })}
                           onAmountChange={(amount) => setGlobalAdjustment({ ...globalAdjustment, amount })}
                           onTogglePercentage={() => setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })}
                         />
@@ -732,7 +733,8 @@ export default function App() {
                             showDropdown={showGlobalAdjTypeDropdown}
                             onToggleDropdown={() => setShowGlobalAdjTypeDropdown(!showGlobalAdjTypeDropdown)}
                             onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
-                            onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type })}
+                            onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type, preset: undefined })}
+                            onGoogleReviews={() => setGlobalAdjustment({ type: 'discount', amount: 10, isPercentage: true, preset: 'google_reviews' })}
                             onAmountChange={(amount) => setGlobalAdjustment({ ...globalAdjustment, amount })}
                             onTogglePercentage={() => setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })}
                           />

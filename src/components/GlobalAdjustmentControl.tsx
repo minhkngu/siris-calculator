@@ -10,6 +10,7 @@ interface GlobalAdjustmentControlProps {
     onToggleDropdown: () => void;
     onCloseDropdown: () => void;
     onTypeChange: (type: 'surcharge' | 'discount') => void;
+    onGoogleReviews: () => void;
     onAmountChange: (amount: number) => void;
     onTogglePercentage: () => void;
 }
@@ -20,6 +21,7 @@ export function GlobalAdjustmentControl({
     onToggleDropdown,
     onCloseDropdown,
     onTypeChange,
+    onGoogleReviews,
     onAmountChange,
     onTogglePercentage,
 }: GlobalAdjustmentControlProps) {
@@ -37,7 +39,7 @@ export function GlobalAdjustmentControl({
                                 "w-2 h-2 rounded-full shadow-sm shrink-0",
                                 globalAdjustment.type === 'surcharge' ? "bg-rose-500" : "bg-emerald-500"
                             )} />
-                            <span className="text-[11px] sm:text-xs">{globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'}</span>
+                            <span className="text-[11px] sm:text-xs">{globalAdjustment.preset === 'google_reviews' ? 'Google Reviews' : globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'}</span>
                             <ChevronDown size={14} className={cn("absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-indigo-500 transition-transform shrink-0", showDropdown && "rotate-180")} />
                         </button>
 
@@ -65,11 +67,17 @@ export function GlobalAdjustmentControl({
                                             onClick={() => { onTypeChange('discount'); onCloseDropdown(); }}
                                             className={cn(
                                                 "w-full text-left px-3 py-3 rounded-xl text-xs font-bold transition-colors flex items-center gap-3",
-                                                globalAdjustment.type === 'discount' ? "bg-emerald-50 text-emerald-700" : "text-zinc-600 hover:bg-zinc-50"
+                                                globalAdjustment.type === 'discount' && !globalAdjustment.preset ? "bg-emerald-50 text-emerald-700" : "text-zinc-600 hover:bg-zinc-50"
                                             )}
                                         >
                                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
                                             Giảm giá
+                                        </button>
+                                        <button
+                                            onClick={() => { onGoogleReviews(); onCloseDropdown(); }}
+                                            className={cn("w-full text-left px-3 py-3 rounded-xl text-xs font-bold transition-colors", globalAdjustment.preset === 'google_reviews' ? "bg-emerald-50 text-emerald-700" : "text-zinc-600 hover:bg-zinc-50")}
+                                        >
+                                            Google Maps Reviews<br /><span className="font-normal">Giảm 10%, tối đa 70.000đ</span>
                                         </button>
                                     </AnimatedPanel>
                                 </>
@@ -78,12 +86,16 @@ export function GlobalAdjustmentControl({
                     </div>
                     <input
                         type="number"
+                        disabled={globalAdjustment.preset === 'google_reviews'}
+                        aria-label="Giá trị điều chỉnh"
                         value={globalAdjustment.amount === 0 ? '' : globalAdjustment.amount}
                         onChange={(e) => onAmountChange(e.target.value === '' ? 0 : Number(e.target.value))}
                         className="w-full min-w-0 bg-transparent px-3 sm:px-4 py-2 sm:py-1 text-sm sm:text-base font-black text-zinc-900 outline-none placeholder:text-zinc-300"
                         placeholder="0"
                     />
                     <button
+                        disabled={globalAdjustment.preset === 'google_reviews'}
+                        aria-label="Chuyển đơn vị điều chỉnh"
                         onClick={onTogglePercentage}
                         className={cn(
                             "w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg sm:rounded-xl transition-all shadow-sm shrink-0",
