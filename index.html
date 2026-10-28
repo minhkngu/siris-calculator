@@ -4,19 +4,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script>
-    // Read fresh data while the application bundle downloads. Only selections are restored.
-    (() => {
-      let scope = 'room';
-      try {
-        const session = JSON.parse(sessionStorage.getItem('hotel-price-calculator:session:v1'));
-        if (session?.version === 1 && session.activeTab === 'items') scope = 'items';
-      } catch { /* Storage can be unavailable. */ }
-      const response = fetch('/api/hotel-data?scope=' + scope);
-      response.catch(() => {}); // App displays connection errors once it is ready.
-      window.__hotelInitialData = { scope, response };
-    })();
-  </script>
   <title>Phần mềm nội bộ Siris Residences</title>
 </head>
 

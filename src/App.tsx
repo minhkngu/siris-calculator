@@ -12,6 +12,7 @@ import { useCalculateForRoom, useComparisons, useMultiRoomCalculator } from './c
 import { Branch, RoomType, DateAdjustment, GlobalAdjustment, StayDiscount, EarlyCheckinLateCheckoutType, Item, SelectedRoomItem } from './components/types';
 import { Hotel, Layers } from 'lucide-react';
 import { FeatureBoundary, FeatureLoading } from './components/FeatureBoundary';
+import { loadHotelData } from './lib/hotelData';
 
 const loadItems = () => import('./components/ItemCompensation').then(module => ({ default: module.ItemCompensation }));
 const loadMultiSelector = () => import('./components/MultiRoomSelector').then(module => ({ default: module.MultiRoomSelector }));
@@ -307,13 +308,7 @@ export default function App() {
     setGroupError(null);
     const request = (async () => {
       try {
-        const initial = window.__hotelInitialData;
-        if (initial?.scope === scope) delete window.__hotelInitialData;
-        const response = await (initial?.scope === scope ? initial.response : fetch(`/api/hotel-data?scope=${scope}`));
-        const hotelData = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(hotelData?.error || `Không tải được dữ liệu Lark (${response.status}).`);
-        const keys = scope === 'room' ? ['branches', 'roomTypes', 'stayDiscounts', 'dateAdjustments'] : ['items'];
-        if (!keys.every(key => Array.isArray(hotelData?.[key]))) throw new Error('Lark chưa trả đủ dữ liệu. Vui lòng thử lại.');
+        const hotelData = await loadHotelData(scope);
         if (scope === 'room') {
           const { branches: bData, roomTypes: rData, stayDiscounts: dData, dateAdjustments: aData } = hotelData as {
             branches: Branch[]; roomTypes: RoomType[]; stayDiscounts: StayDiscount[]; dateAdjustments: DateAdjustment[];
@@ -390,7 +385,7 @@ export default function App() {
           setItemsReady(true);
         }
       } catch (error) {
-        setGroupError(error instanceof Error ? error.message : 'Không tải được dữ liệu từ Lark.');
+        setGroupError(error instanceof Error ? error.message : 'Không tải được dữ liệu từ Supabase.');
       } finally {
         setGroupLoading(false);
       }

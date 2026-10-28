@@ -24,7 +24,7 @@ Phần mềm quản lý nội bộ dành cho Siris Residences — hỗ trợ tí
 
 ### Bồi thường vật dụng
 - **Tab riêng biệt**: Chuyển đổi giữa "Tính tiền phòng" và "Bồi thường vật dụng".
-- **Danh sách vật dụng**: Lấy từ bảng `items` trong Lark Base, hiển thị dạng lưới đa cột.
+- **Danh sách vật dụng**: Lấy từ bảng `items` trong Supabase, hiển thị dạng lưới đa cột.
 - **Gom nhóm theo loại**: Phân nhóm theo `kind` (cái, đôi, ...).
 - **Chọn số lượng**: Bộ điều khiển +/- cho phép chọn số lượng bồi thường (tối đa theo số lượng trong phòng).
 - **Tìm kiếm**: Ô tìm kiếm lọc nhanh theo tên hoặc loại vật dụng.
@@ -32,7 +32,7 @@ Phần mềm quản lý nội bộ dành cho Siris Residences — hỗ trợ tí
 
 ## Công nghệ
 
-React 19, TypeScript 5.8, Vite 6, Tailwind CSS 4, Lark Open API, Framer Motion, Lucide React, date-fns, react-day-picker.
+React 19, TypeScript 5.8, Vite 6, Tailwind CSS 4, Supabase, Framer Motion, Lucide React, date-fns, react-day-picker.
 
 ## Cấu trúc
 
@@ -59,73 +59,30 @@ src/
 │   └── MultiRoomSummary.tsx    # Tổng hợp & sao chép báo giá nhiều phòng
 ├── lib/
 │   ├── hotelCalculator.ts      # Logic tính giá
+│   ├── supabase.ts             # Kết nối Supabase
+│   ├── hotelData.ts            # Tải và chuyển đổi dữ liệu
 │   └── utils.ts                # cn() utility
-└── server/
-    └── lark-api.mjs            # API cục bộ đọc Lark Base
 ```
 
 ## Cài đặt
 
 ```bash
 npm install
-cp .env.example .env          # Điền LARK_APP_ID, LARK_APP_SECRET, LARK_BASE_TOKEN
-npm run dev                    # Chạy web và API Lark cục bộ
-npm run build                  # Build production
+cp .env.example .env          # Điền VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY
+npm run dev
+npm run build
 ```
 
-## Lark Base
+## Dữ liệu Supabase
 
-Ứng dụng đọc dữ liệu từ Base **Siris Web**, gồm các bảng `branches`, `room_types`, `stay_discounts`, `date_adjustments` và `items`. Máy chủ Node.js trên máy tính gọi Lark Open API, còn trình duyệt gọi `/api/hotel-data?scope=room` hoặc `?scope=items` theo tab đang dùng; App Secret và access token không được gửi xuống trình duyệt.
+Ứng dụng đọc trực tiếp các bảng `branches`, `room_types`, `stay_discounts`, `date_adjustments` và `items` từ Supabase. Tab phòng và tab vật dụng được tải riêng, chỉ khi cần. Cấu hình khóa công khai (anon hoặc publishable), không dùng khóa service role. Các bảng cần có quyền đọc phù hợp với chính sách RLS của dự án.
 
-Trong Lark Developer Console, tạo ứng dụng nội bộ, cấp quyền đọc bản ghi Base, thêm ứng dụng vào Base Siris Web, rồi điền App ID, App Secret và Base token vào `.env`. Khởi động lại `npm run dev` sau khi đổi `.env`.
-
-## Triển khai trên Vercel
-
-Project Vercel sử dụng framework Vite, lệnh build `npm run build` và thư mục đầu ra `dist`. Đường dẫn `/api/hotel-data` được phục vụ bằng Node.js Vercel Function trong `api/hotel-data.js`, dùng chung phần đọc và kiểm tra dữ liệu Lark với máy chủ cục bộ.
-
-Thêm `LARK_APP_ID`, `LARK_APP_SECRET` và `LARK_BASE_TOKEN` vào Environment Variables của project cho môi trường **Production**, rồi triển khai lại. Không dùng tiền tố `VITE_` cho các giá trị này. Các biến chỉ được đọc phía máy chủ; file `.env` cục bộ không được đưa vào Git hay bản triển khai.
-
-Function chạy tại Singapore (`sin1`). Phản hồi thành công được CDN Vercel lưu 5 giây, không trả bản cũ khi cập nhật nền; trình duyệt không lưu dữ liệu API và lỗi không được lưu đệm. Production không lưu thêm bộ dữ liệu trong instance để tránh cộng dồn thời gian đệm; bản cục bộ vẫn lưu trong bộ nhớ 30 giây. Sau khi hết cache, yêu cầu tiếp theo đọc Lark mới; thời gian cập nhật gồm tối đa 5 giây cache cộng thời gian gọi Lark, không phải đồng bộ tức thì.
-
-Tenant access token được tái sử dụng theo hạn Lark trả về. Trên Vercel, token được mã hóa AES-256-GCM bằng khóa dẫn xuất từ App Secret và lưu trong Runtime Cache theo project, môi trường và thông tin xác thực để instance mới không cần xác thực lại. Token được bỏ trước hạn 60 giây; nếu Lark từ chối token, API xác thực lại và thay bản cache. Cache lỗi hoặc quá 500 ms thì tiếp tục xác thực trực tiếp với Lark. Không lưu App Secret trong cache hoặc trả token xuống trình duyệt.
-
-API hỗ trợ `scope=room` (4 bảng giá phòng), `scope=items` (bảng vật dụng), và `scope=all` (mặc định, đủ 5 bảng để tương thích). Giá trị khác trả HTTP 400 và không cache. Mỗi nhóm chỉ trả các trường dữ liệu tương ứng. Các yêu cầu đồng thời trong cùng instance dùng chung một lượt tải cho từng scope; cache cục bộ cũng tách theo scope, chỉ đọc các cột ứng dụng cần. Khi cache CDN hết hạn, API đọc dữ liệu mới và trả lỗi nếu không thể tải đủ dữ liệu hợp lệ của nhóm được yêu cầu. Header `Server-Timing` và log `hotel-data-load` chỉ ghi thời gian xử lý và scope, không ghi nội dung dữ liệu hoặc token.
-
-## Các cột Lark Base được sử dụng
-
-```sql
--- branches
-branches: name, address (Lark `record_id` là ID dùng trong ứng dụng)
-
--- room_types
-room_types: branch (liên kết đến branches), name, weekdayprice, weekendprice, is_hidden
-
--- stay_discounts
-stay_discounts: name, minnights, discountamount, ispercentage
-
--- date_adjustments
-date_adjustments: date, type, amount, ispercentage, note
-
--- items (vật dụng bồi thường)
-items: item_name, kind, quantity, unit_price
-```
+Trên Vercel, thêm `VITE_SUPABASE_URL` và `VITE_SUPABASE_ANON_KEY` vào Environment Variables, sau đó build và triển khai lại. Đây là biến được đưa vào mã trình duyệt khi build.
 
 ## Kiểm tra code
 
-- `npm run typecheck`: kiểm tra kiểu dữ liệu và khai báo không sử dụng.
-- `npm test`: kiểm tra công thức tính giá phòng (yêu cầu Node.js 22.6+ hỗ trợ `--experimental-strip-types`).
+- `npm run typecheck`: kiểm tra kiểu dữ liệu.
+- `npm test`: kiểm tra các chức năng tính giá (yêu cầu Node.js 22.6+).
 - `npm run build`: tạo bản production.
 
-## Tối ưu tải trang
-
-- Yêu cầu dữ liệu bắt đầu ngay từ HTML, song song với tải JavaScript. Tab được xác định từ lựa chọn đã lưu trong phiên; không lưu dữ liệu giá vào trình duyệt.
-- Giao diện hiển thị tiêu đề và thanh chuyển tab trong lúc chờ. Mỗi nhóm dữ liệu có trạng thái tải/lỗi riêng; nút “Thử lại” chỉ tải lại nhóm bị lỗi.
-- Tab bồi thường, chế độ nhiều phòng, lịch và tính năng hiệu ứng được tải khi cần. Lỗi tải mã có nút tải lại trang.
-- Lựa chọn của nhóm chưa tải được giữ trong phiên và chỉ được kiểm tra/khôi phục khi nhóm đó tải thành công. Chuyển tab không khôi phục lại lựa chọn cũ đè lên thao tác mới.
-- Kết quả đo và giới hạn: [PERFORMANCE.md](PERFORMANCE.md).
-
-### Kiểm tra trình duyệt
-
-Sau `npm run build`, chạy `node scripts/check-browser.mjs` trong môi trường có Playwright và Chrome. Không thêm thư viện vào dependencies ứng dụng. Nếu Playwright được cung cấp từ bên ngoài dự án, đặt `PLAYWRIGHT_MODULE` thành đường dẫn module `playwright/index.mjs`; dùng `BROWSER_CHANNEL` nếu cần đổi kênh trình duyệt (mặc định `chrome`).
-
-Bài kiểm tra mặc định dùng dữ liệu giả lập và chỉ mở máy chủ trên `127.0.0.1`. Nó kiểm tra mã tải theo tính năng, lịch, VAT, nhiều phòng, vật dụng, khôi phục phiên, lỗi độc lập và lỗi tải mã. Đặt `PERF_BEFORE_DIR` trỏ đến thư mục build trước thay đổi để đo mỗi bản 5 lượt mở mới và tải lại; thêm `PERF_LIVE=1` và chạy Node với `--env-file=.env` để đọc Lark thật. Kết quả chỉ chứa thời gian và dung lượng, ghi vào `/tmp/hotel-performance.json`.
+Các lựa chọn của người dùng được lưu trong phiên trình duyệt; dữ liệu giá được tải lại từ Supabase.
