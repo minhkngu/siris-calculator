@@ -34,7 +34,7 @@ export interface GlobalAdjustment {
     type: 'surcharge' | 'discount';
     amount: number;
     isPercentage: boolean;
-    preset?: 'google_reviews';
+    googleReviews?: boolean;
 }
 
 export type EarlyCheckinLateCheckoutType =
@@ -67,6 +67,7 @@ export interface CalculationResult {
     nights: NightBreakdown[];
     totalBase: number;
     globalAdjustmentValue: number;
+    googleReviewsDiscount: number;
     stayDiscount: StayDiscount | undefined;
     stayDiscountValue: number;
     earlyLateTotal: number;
@@ -117,6 +118,7 @@ export interface MultiRoomTotalSummary {
     totalStayDiscounts: number;
     totalEarlyLate: number;
     globalAdjustmentValue: number;
+    googleReviewsDiscount: number;
     vatValue: number;
     finalTotal: number;
     deposit: number;

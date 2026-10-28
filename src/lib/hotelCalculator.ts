@@ -104,12 +104,13 @@ export function calculateForRoomLogic(
 
     finalTotal += earlyLateTotal;
 
-    const globalValue = globalAdjustment.preset === 'google_reviews'
-        ? Math.min(70000, Math.round(Math.max(0, finalTotal) * 0.1))
-        : globalAdjustment.isPercentage
+    const googleReviewsDiscount = globalAdjustment.googleReviews
+        ? Math.min(70000, Math.round(Math.max(0, finalTotal) * 0.1)) : 0;
+    const globalValue = globalAdjustment.isPercentage
             ? Math.round(totalBase * globalAdjustment.amount / 100)
             : globalAdjustment.amount;
     finalTotal += globalAdjustment.type === 'surcharge' ? globalValue : -globalValue;
+    finalTotal -= googleReviewsDiscount;
 
     let vatValue = 0;
     if (includeVAT) {
@@ -123,6 +124,7 @@ export function calculateForRoomLogic(
         nights: breakdown,
         totalBase,
         globalAdjustmentValue: globalValue,
+        googleReviewsDiscount,
         stayDiscount: bestStayDiscount,
         stayDiscountValue,
         earlyLateTotal,
@@ -193,9 +195,9 @@ export function calculateMultiRoomLogic(
     const combinedSubtotal = totalBase - totalStayDiscounts + totalEarlyLate;
 
     // Apply global adjustment on combined subtotal
-    const globalValue = globalAdjustment.preset === 'google_reviews'
-        ? Math.min(70000, Math.round(Math.max(0, combinedSubtotal) * 0.1))
-        : globalAdjustment.isPercentage
+    const googleReviewsDiscount = globalAdjustment.googleReviews
+        ? Math.min(70000, Math.round(Math.max(0, combinedSubtotal) * 0.1)) : 0;
+    const globalValue = globalAdjustment.isPercentage
         ? Math.round(combinedSubtotal * globalAdjustment.amount / 100)
         : globalAdjustment.amount;
 
@@ -205,7 +207,7 @@ export function calculateMultiRoomLogic(
     } else {
         finalBeforeVat -= globalValue;
     }
-    if (finalBeforeVat < 0) finalBeforeVat = 0;
+    finalBeforeVat = Math.max(0, finalBeforeVat - googleReviewsDiscount);
 
     let vatValue = 0;
     let finalTotal = finalBeforeVat;
@@ -224,6 +226,7 @@ export function calculateMultiRoomLogic(
         totalStayDiscounts,
         totalEarlyLate,
         globalAdjustmentValue: globalValue,
+        googleReviewsDiscount,
         vatValue,
         finalTotal,
         deposit

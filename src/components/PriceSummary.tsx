@@ -237,7 +237,7 @@ export function PriceSummary({
                             <div className="flex items-center gap-2 sm:gap-2.5">
                                 <Tag size={14} className={globalAdjustment.type === 'surcharge' ? "text-rose-500 shrink-0" : "text-emerald-500 shrink-0"} />
                                 <span className="text-[14px] sm:text-[15px] font-medium text-slate-700">
-                                    {globalAdjustment.preset === 'google_reviews' ? 'Google Maps Reviews (10%, tối đa 70.000đ)' : `${globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'} ${globalAdjustment.isPercentage ? `${globalAdjustment.amount}%` : ''}`}
+                                    {globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'} {globalAdjustment.isPercentage ? `${globalAdjustment.amount}%` : ''}
                                 </span>
                             </div>
                             <span className={cn(
@@ -251,7 +251,7 @@ export function PriceSummary({
 
                     {/* VAT Section */}
                     <div className="space-y-3 sm:space-y-4">
-                        <GoogleReviewsOption checked={globalAdjustment.preset === 'google_reviews'} onChange={onToggleGoogleReviews} />
+                        <GoogleReviewsOption checked={!!globalAdjustment.googleReviews} onChange={onToggleGoogleReviews} />
                         <div className="flex justify-between items-center">
                             <label className="flex items-center cursor-pointer group">
                                 <div

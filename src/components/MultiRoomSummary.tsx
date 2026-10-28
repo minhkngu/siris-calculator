@@ -80,8 +80,9 @@ export function MultiRoomSummary({
             text += `• Điều chỉnh check-in/check-out: ${summary.totalEarlyLate > 0 ? '+' : ''}${formatCurrency(summary.totalEarlyLate)}\n`;
         }
         if (globalAdjustment.amount > 0) {
-            text += `• ${globalAdjustment.preset === 'google_reviews' ? 'Giảm giá Google Maps Reviews' : globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'}: ${globalAdjustment.type === 'surcharge' ? '+' : '-'}${formatCurrency(summary.globalAdjustmentValue)}\n`;
+            text += `• ${globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'}: ${globalAdjustment.type === 'surcharge' ? '+' : '-'}${formatCurrency(summary.globalAdjustmentValue)}\n`;
         }
+        if (globalAdjustment.googleReviews) text += `• Google Maps Reviews: -${formatCurrency(summary.googleReviewsDiscount)}\n`;
         if (includeVAT) {
             text += `• Thuế VAT (${vatRate}%): +${formatCurrency(summary.vatValue)}\n`;
         }
@@ -250,7 +251,7 @@ export function MultiRoomSummary({
                     )}>
                         <div className="flex items-center gap-1.5">
                             <Tag size={12} />
-                            <span>{globalAdjustment.preset === 'google_reviews' ? 'Google Maps Reviews (10%, tối đa 70.000đ)' : `${globalAdjustment.type === 'surcharge' ? 'Phụ thu tổng' : 'Giảm giá tổng'} ${globalAdjustment.isPercentage ? `(${globalAdjustment.amount}%)` : ''}`}</span>
+                            <span>{globalAdjustment.type === 'surcharge' ? 'Phụ thu tổng' : 'Giảm giá tổng'} {globalAdjustment.isPercentage ? `(${globalAdjustment.amount}%)` : ''}</span>
                         </div>
                         <span className="font-bold">
                             {globalAdjustment.type === 'surcharge' ? '+' : '-'} {formatCurrency(summary.globalAdjustmentValue)}
@@ -261,7 +262,7 @@ export function MultiRoomSummary({
 
             {/* VAT Section */}
             <div className="space-y-2 sm:space-y-3 pt-2.5 sm:pt-3 border-t border-slate-100 mb-4 sm:mb-5">
-                <GoogleReviewsOption checked={globalAdjustment.preset === 'google_reviews'} onChange={onToggleGoogleReviews} />
+                <GoogleReviewsOption checked={!!globalAdjustment.googleReviews} onChange={onToggleGoogleReviews} />
                 <div className="flex justify-between items-center">
                     <label className="flex items-center cursor-pointer group">
                         <div

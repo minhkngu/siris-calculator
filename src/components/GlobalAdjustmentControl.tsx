@@ -37,7 +37,7 @@ export function GlobalAdjustmentControl({
                                 "w-2 h-2 rounded-full shadow-sm shrink-0",
                                 globalAdjustment.type === 'surcharge' ? "bg-rose-500" : "bg-emerald-500"
                             )} />
-                            <span className="text-[11px] sm:text-xs">{globalAdjustment.preset === 'google_reviews' ? 'Google Reviews' : globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'}</span>
+                            <span className="text-[11px] sm:text-xs">{globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'}</span>
                             <ChevronDown size={14} className={cn("absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-indigo-500 transition-transform shrink-0", showDropdown && "rotate-180")} />
                         </button>
 
@@ -65,7 +65,7 @@ export function GlobalAdjustmentControl({
                                             onClick={() => { onTypeChange('discount'); onCloseDropdown(); }}
                                             className={cn(
                                                 "w-full text-left px-3 py-3 rounded-xl text-xs font-bold transition-colors flex items-center gap-3",
-                                                globalAdjustment.type === 'discount' && !globalAdjustment.preset ? "bg-emerald-50 text-emerald-700" : "text-zinc-600 hover:bg-zinc-50"
+                                                globalAdjustment.type === 'discount' ? "bg-emerald-50 text-emerald-700" : "text-zinc-600 hover:bg-zinc-50"
                                             )}
                                         >
                                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -78,7 +78,6 @@ export function GlobalAdjustmentControl({
                     </div>
                     <input
                         type="number"
-                        disabled={globalAdjustment.preset === 'google_reviews'}
                         aria-label="Giá trị điều chỉnh"
                         value={globalAdjustment.amount === 0 ? '' : globalAdjustment.amount}
                         onChange={(e) => onAmountChange(e.target.value === '' ? 0 : Number(e.target.value))}
@@ -86,7 +85,6 @@ export function GlobalAdjustmentControl({
                         placeholder="0"
                     />
                     <button
-                        disabled={globalAdjustment.preset === 'google_reviews'}
                         aria-label="Chuyển đơn vị điều chỉnh"
                         onClick={onTogglePercentage}
                         className={cn(

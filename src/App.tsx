@@ -343,7 +343,10 @@ export default function App() {
             setSelectedRoomId(selectedRoom);
             setCheckIn(restoredCheckIn);
             setCheckOut(restoredCheckOut);
-            setGlobalAdjustment(validAdjustment ? restoredAdjustment : { type: 'surcharge', amount: 0, isPercentage: true });
+            const legacyGoogleReviews = (restoredAdjustment as (GlobalAdjustment & { preset?: string }) | undefined)?.preset === 'google_reviews';
+            setGlobalAdjustment(legacyGoogleReviews
+              ? { type: 'discount', amount: 0, isPercentage: true, googleReviews: true }
+              : validAdjustment ? restoredAdjustment : { type: 'surcharge', amount: 0, isPercentage: true });
             setIncludeVAT(typeof restore?.includeVAT === 'boolean' ? restore.includeVAT : false);
             setVatRate(restore && Number.isFinite(restore.vatRate) && restore.vatRate >= 0 && restore.vatRate <= 100
               ? restore.vatRate
@@ -641,7 +644,7 @@ export default function App() {
                           showDropdown={showGlobalAdjTypeDropdown}
                           onToggleDropdown={() => setShowGlobalAdjTypeDropdown(!showGlobalAdjTypeDropdown)}
                           onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
-                          onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type, preset: undefined })}
+                          onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type })}
                           onAmountChange={(amount) => setGlobalAdjustment({ ...globalAdjustment, amount })}
                           onTogglePercentage={() => setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })}
                         />
@@ -656,7 +659,7 @@ export default function App() {
                           roomName={selectedRoom?.name || ''}
                           calculation={calculation}
                           globalAdjustment={globalAdjustment}
-                          onToggleGoogleReviews={(checked) => setGlobalAdjustment(checked ? { type: 'discount', amount: 10, isPercentage: true, preset: 'google_reviews' } : { type: 'discount', amount: 0, isPercentage: true })}
+                          onToggleGoogleReviews={(checked) => setGlobalAdjustment(prev => ({ ...prev, googleReviews: checked }))}
                           includeVAT={includeVAT}
                           vatRate={vatRate}
                           showNightlyDetails={showNightlyDetails}
@@ -728,7 +731,7 @@ export default function App() {
                             showDropdown={showGlobalAdjTypeDropdown}
                             onToggleDropdown={() => setShowGlobalAdjTypeDropdown(!showGlobalAdjTypeDropdown)}
                             onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
-                            onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type, preset: undefined })}
+                            onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type })}
                             onAmountChange={(amount) => setGlobalAdjustment({ ...globalAdjustment, amount })}
                             onTogglePercentage={() => setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })}
                           />
@@ -737,7 +740,7 @@ export default function App() {
                         <MultiRoomSummary
                           summary={multiRoomSummary}
                           globalAdjustment={globalAdjustment}
-                          onToggleGoogleReviews={(checked) => setGlobalAdjustment(checked ? { type: 'discount', amount: 10, isPercentage: true, preset: 'google_reviews' } : { type: 'discount', amount: 0, isPercentage: true })}
+                          onToggleGoogleReviews={(checked) => setGlobalAdjustment(prev => ({ ...prev, googleReviews: checked }))}
                           includeVAT={includeVAT}
                           vatRate={vatRate}
                           onToggleVAT={(checked) => setIncludeVAT(checked)}

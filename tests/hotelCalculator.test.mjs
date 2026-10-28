@@ -80,20 +80,34 @@ test('multi-room discount cannot produce a negative payable total', () => {
 });
 
 test('Google Maps Reviews discount is 10% of the pre-VAT subtotal, capped at 70,000', () => {
-    const google = { type: 'discount', amount: 10, isPercentage: true, preset: 'google_reviews' };
+    const google = { type: 'discount', amount: 0, isPercentage: true, googleReviews: true };
     const cheapRoom = { ...room, weekdayPrice: 500000 };
     const low = calculateForRoomLogic(cheapRoom, '2026-09-07', '2026-09-08', [], google, [], true, 10);
-    assert.equal(low.globalAdjustmentValue, 50000);
+    assert.equal(low.googleReviewsDiscount, 50000);
     assert.equal(low.finalTotal, 495000);
     const capped = calculate('2026-09-07', '2026-09-08', [], google);
-    assert.equal(capped.globalAdjustmentValue, 70000);
+    assert.equal(capped.googleReviewsDiscount, 70000);
     assert.equal(capped.finalTotal, 930000);
     const item = { id: '1', roomId: 'r1', branchId: 'b1', checkIn: '2026-09-07', checkOut: '2026-09-08', earlyLateOptions: new Set() };
     const multi = calculateMultiRoomLogic([item, { ...item, id: '2' }], [room], [branch], [], google, [], false, 10);
-    assert.equal(multi.globalAdjustmentValue, 70000);
+    assert.equal(multi.googleReviewsDiscount, 70000);
     assert.equal(multi.finalTotal, 1930000);
     const empty = calculateMultiRoomLogic([], [room], [branch], [], google, [], false, 10);
-    assert.equal(empty.globalAdjustmentValue, 0);
+    assert.equal(empty.googleReviewsDiscount, 0);
+});
+
+test('Google Reviews and a manual adjustment apply independently', () => {
+    const adjustment = { type: 'surcharge', amount: 100000, isPercentage: false, googleReviews: true };
+    const cheapRoom = { ...room, weekdayPrice: 500000 };
+    const single = calculateForRoomLogic(cheapRoom, '2026-09-07', '2026-09-08', [], adjustment, [], true, 10);
+    assert.equal(single.globalAdjustmentValue, 100000);
+    assert.equal(single.googleReviewsDiscount, 50000);
+    assert.equal(single.finalTotal, 605000);
+    const item = { id: '1', roomId: 'r1', branchId: 'b1', checkIn: '2026-09-07', checkOut: '2026-09-08', earlyLateOptions: new Set() };
+    const multi = calculateMultiRoomLogic([item], [cheapRoom], [branch], [], adjustment, [], true, 10);
+    assert.equal(multi.globalAdjustmentValue, 100000);
+    assert.equal(multi.googleReviewsDiscount, 50000);
+    assert.equal(multi.finalTotal, 605000);
 });
 
 test('22:00 check-in discounts only the first adjusted night, before VAT', () => {
