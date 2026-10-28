@@ -6,10 +6,12 @@ import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
 import { CalculationResult, GlobalAdjustment, EarlyCheckinLateCheckoutType } from './types';
 import { EarlyLateOptions } from './EarlyLateOptions';
+import { GoogleReviewsOption } from './GoogleReviewsOption';
 
 interface PriceSummaryProps {
     calculation: CalculationResult | null;
     globalAdjustment: GlobalAdjustment;
+    onToggleGoogleReviews: (checked: boolean) => void;
     includeVAT: boolean;
     vatRate: number;
     showNightlyDetails: boolean;
@@ -28,6 +30,7 @@ interface PriceSummaryProps {
 export function PriceSummary({
     calculation,
     globalAdjustment,
+    onToggleGoogleReviews,
     includeVAT,
     vatRate,
     showNightlyDetails,
@@ -248,6 +251,7 @@ export function PriceSummary({
 
                     {/* VAT Section */}
                     <div className="space-y-3 sm:space-y-4">
+                        <GoogleReviewsOption checked={globalAdjustment.preset === 'google_reviews'} onChange={onToggleGoogleReviews} />
                         <div className="flex justify-between items-center">
                             <label className="flex items-center cursor-pointer group">
                                 <div

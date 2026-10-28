@@ -642,7 +642,6 @@ export default function App() {
                           onToggleDropdown={() => setShowGlobalAdjTypeDropdown(!showGlobalAdjTypeDropdown)}
                           onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
                           onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type, preset: undefined })}
-                          onGoogleReviews={() => setGlobalAdjustment({ type: 'discount', amount: 10, isPercentage: true, preset: 'google_reviews' })}
                           onAmountChange={(amount) => setGlobalAdjustment({ ...globalAdjustment, amount })}
                           onTogglePercentage={() => setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })}
                         />
@@ -657,6 +656,7 @@ export default function App() {
                           roomName={selectedRoom?.name || ''}
                           calculation={calculation}
                           globalAdjustment={globalAdjustment}
+                          onToggleGoogleReviews={(checked) => setGlobalAdjustment(checked ? { type: 'discount', amount: 10, isPercentage: true, preset: 'google_reviews' } : { type: 'discount', amount: 0, isPercentage: true })}
                           includeVAT={includeVAT}
                           vatRate={vatRate}
                           showNightlyDetails={showNightlyDetails}
@@ -729,7 +729,6 @@ export default function App() {
                             onToggleDropdown={() => setShowGlobalAdjTypeDropdown(!showGlobalAdjTypeDropdown)}
                             onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
                             onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type, preset: undefined })}
-                            onGoogleReviews={() => setGlobalAdjustment({ type: 'discount', amount: 10, isPercentage: true, preset: 'google_reviews' })}
                             onAmountChange={(amount) => setGlobalAdjustment({ ...globalAdjustment, amount })}
                             onTogglePercentage={() => setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })}
                           />
@@ -738,6 +737,7 @@ export default function App() {
                         <MultiRoomSummary
                           summary={multiRoomSummary}
                           globalAdjustment={globalAdjustment}
+                          onToggleGoogleReviews={(checked) => setGlobalAdjustment(checked ? { type: 'discount', amount: 10, isPercentage: true, preset: 'google_reviews' } : { type: 'discount', amount: 0, isPercentage: true })}
                           includeVAT={includeVAT}
                           vatRate={vatRate}
                           onToggleVAT={(checked) => setIncludeVAT(checked)}

@@ -3,10 +3,12 @@ import { Tag, Check, Copy, CheckCheck, Hotel, Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { GlobalAdjustment, MultiRoomTotalSummary } from './types';
 import { format, parseISO } from 'date-fns';
+import { GoogleReviewsOption } from './GoogleReviewsOption';
 
 interface MultiRoomSummaryProps {
     summary: MultiRoomTotalSummary;
     globalAdjustment: GlobalAdjustment;
+    onToggleGoogleReviews: (checked: boolean) => void;
     includeVAT: boolean;
     vatRate: number;
     onToggleVAT: (checked: boolean) => void;
@@ -18,6 +20,7 @@ interface MultiRoomSummaryProps {
 export function MultiRoomSummary({
     summary,
     globalAdjustment,
+    onToggleGoogleReviews,
     includeVAT,
     vatRate,
     onToggleVAT,
@@ -258,6 +261,7 @@ export function MultiRoomSummary({
 
             {/* VAT Section */}
             <div className="space-y-2 sm:space-y-3 pt-2.5 sm:pt-3 border-t border-slate-100 mb-4 sm:mb-5">
+                <GoogleReviewsOption checked={globalAdjustment.preset === 'google_reviews'} onChange={onToggleGoogleReviews} />
                 <div className="flex justify-between items-center">
                     <label className="flex items-center cursor-pointer group">
                         <div

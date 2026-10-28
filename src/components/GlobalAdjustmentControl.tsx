@@ -10,7 +10,6 @@ interface GlobalAdjustmentControlProps {
     onToggleDropdown: () => void;
     onCloseDropdown: () => void;
     onTypeChange: (type: 'surcharge' | 'discount') => void;
-    onGoogleReviews: () => void;
     onAmountChange: (amount: number) => void;
     onTogglePercentage: () => void;
 }
@@ -21,7 +20,6 @@ export function GlobalAdjustmentControl({
     onToggleDropdown,
     onCloseDropdown,
     onTypeChange,
-    onGoogleReviews,
     onAmountChange,
     onTogglePercentage,
 }: GlobalAdjustmentControlProps) {
@@ -72,12 +70,6 @@ export function GlobalAdjustmentControl({
                                         >
                                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
                                             Giảm giá
-                                        </button>
-                                        <button
-                                            onClick={() => { onGoogleReviews(); onCloseDropdown(); }}
-                                            className={cn("w-full text-left px-3 py-3 rounded-xl text-xs font-bold transition-colors", globalAdjustment.preset === 'google_reviews' ? "bg-emerald-50 text-emerald-700" : "text-zinc-600 hover:bg-zinc-50")}
-                                        >
-                                            Google Maps Reviews<br /><span className="font-normal">Giảm 10%, tối đa 70.000đ</span>
                                         </button>
                                     </AnimatedPanel>
                                 </>
