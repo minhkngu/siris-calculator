@@ -142,7 +142,7 @@ export function ComparisonPanel({
                                         ))
                                     ) : (
                                         roomTypes
-                                            .filter(room => compareBranchIds.includes(room.branchId))
+                                            .filter(room => compareBranchIds.length === 0 || compareBranchIds.includes(room.branchId))
                                             .map(room => {
                                                 const branch = branches.find(b => b.id === room.branchId);
                                                 return (

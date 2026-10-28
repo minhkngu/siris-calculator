@@ -42,7 +42,10 @@ export function useComparisons(
         const roomIds = new Set(compareRoomIds);
         const branchesById = new Map(branches.map(branch => [branch.id, branch]));
         return roomTypes
-            .filter(r => branchIds.has(r.branchId) && roomIds.has(r.id))
+            .filter(r =>
+                (branchIds.size === 0 || branchIds.has(r.branchId)) &&
+                (roomIds.size === 0 || roomIds.has(r.id))
+            )
             .map(r => {
                 const calc = r === selectedRoom ? calculation : calculateForRoomLogic(r, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, earlyLateOptions);
                 const branch = branchesById.get(r.branchId);
