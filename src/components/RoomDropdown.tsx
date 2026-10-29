@@ -1,4 +1,4 @@
-import { Hotel, ChevronDown, Check, Tag } from 'lucide-react';
+import { Hotel, ChevronDown, Check } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
@@ -57,7 +57,7 @@ export function RoomDropdown({
             <div className="text-[11px] text-slate-500 truncate leading-tight mt-0.5 tabular-nums">
               {selectedRoomId ? (
                 <span>
-                  Từ <span className="font-semibold text-slate-700">{formatCurrency(selectedRoom?.weekdayPrice || 0)}</span> / đêm
+                  CN–T5: {formatCurrency(selectedRoom?.weekdayPrice || 0)} · T6–T7: {formatCurrency(selectedRoom?.weekendPrice || 0)}
                 </span>
               ) : (
                 'Bảng giá phòng lưu trú'
@@ -120,19 +120,10 @@ export function RoomDropdown({
                             <div className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center shrink-0">
                               <Check size={12} strokeWidth={3} />
                             </div>
-                          ) : (
-                            <Tag size={13} className="text-slate-300 shrink-0" />
-                          )}
+                          ) : null}
                         </div>
-                        <div className="grid grid-cols-2 gap-1.5 text-[11px] tabular-nums">
-                          <div className="bg-white border border-slate-200/80 rounded px-2 py-1">
-                            <span className="text-slate-400 block text-[10px]">Ngày thường (CN-T5)</span>
-                            <span className="font-semibold text-slate-800">{formatCurrency(room.weekdayPrice)}</span>
-                          </div>
-                          <div className="bg-white border border-slate-200/80 rounded px-2 py-1">
-                            <span className="text-slate-400 block text-[10px]">Cuối tuần (T6-T7)</span>
-                            <span className="font-semibold text-slate-800">{formatCurrency(room.weekendPrice)}</span>
-                          </div>
+                        <div className="text-[11px] text-slate-500 tabular-nums">
+                          CN–T5: {formatCurrency(room.weekdayPrice)} · T6–T7: {formatCurrency(room.weekendPrice)}
                         </div>
                       </button>
                     );
