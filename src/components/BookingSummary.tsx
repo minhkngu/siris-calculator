@@ -24,11 +24,13 @@ export function BookingSummary({ calculation, comparisonDifference, comparisonNa
     const [copyError, setCopyError] = useState('');
     if (!calculation || !branchName || !roomName) return null;
     const lines = getPriceBreakdown([{ calculation, options: selectedEarlyLateOptions, checkOut }], globalAdjustment, calculation.vatValue, calculation.finalTotal, false).filter(line => line.kind !== 'total');
-    if (comparisonName && comparisonDifference !== 0) lines.push({ label: `Chênh lệch: ${comparisonName}`, amount: comparisonDifference, kind: 'adjustment' });
+    const baseLine = lines.find(line => line.kind === 'base');
+    const adjustments = lines.filter(line => line.kind !== 'base');
+    if (comparisonName && comparisonDifference !== 0) adjustments.push({ label: `Chênh lệch: ${comparisonName}`, amount: comparisonDifference, kind: 'adjustment' });
     const balance = getPaymentBalance(calculation.finalTotal + comparisonDifference, paidAmount);
     const quote = [
-        `${comparisonName ? `Phòng cũ: ${branchName} · ${roomName} → Phòng muốn đổi: ${comparisonName}` : `${branchName} · ${roomName}`} · ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} · ${calculation.nights.length} đêm`,
-        ...lines.map(line => `${line.kind === 'base' ? 'Giá phòng' : line.label}: ${line.kind === 'base' ? formatCurrency(line.amount) : `${line.amount < 0 ? '− ' : '+ '}${formatCurrency(Math.abs(line.amount))}`}`),
+        `${comparisonName ? `Phòng cũ: ${branchName} · ${roomName} → Phòng muốn đổi: ${comparisonName}` : `${branchName} · ${roomName}`} · ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} · ${calculation.nights.length} đêm${baseLine ? ` · ${formatCurrency(baseLine.amount)}` : ''}`,
+        ...adjustments.map(line => `${line.label}: ${line.amount < 0 ? '− ' : '+ '}${formatCurrency(Math.abs(line.amount))}`),
         `Tổng: ${formatCurrency(calculation.finalTotal + comparisonDifference)}`,
         ...(paidAmount > 0 ? [`Đã thanh toán: ${formatCurrency(paidAmount)}`, `Phải thanh toán thêm: ${formatCurrency(balance.remaining)}`] : []),
         ...(balance.excess > 0 ? [`Thanh toán dư: ${formatCurrency(balance.excess)}`] : []),
