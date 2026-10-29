@@ -1,4 +1,4 @@
-import { ChevronDown, Percent, DollarSign } from 'lucide-react';
+import { Check, ChevronDown, Percent, DollarSign } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
@@ -12,6 +12,10 @@ interface GlobalAdjustmentControlProps {
     onTypeChange: (type: 'surcharge' | 'discount') => void;
     onAmountChange: (amount: number) => void;
     onTogglePercentage: () => void;
+    includeVAT: boolean;
+    vatRate: number;
+    onToggleVAT: (checked: boolean) => void;
+    onVatRateChange: (rate: number) => void;
 }
 
 export function GlobalAdjustmentControl({
@@ -22,16 +26,20 @@ export function GlobalAdjustmentControl({
     onTypeChange,
     onAmountChange,
     onTogglePercentage,
+    includeVAT,
+    vatRate,
+    onToggleVAT,
+    onVatRateChange,
 }: GlobalAdjustmentControlProps) {
     return (
         <div className="p-3 lg:p-4">
             <label className="block text-[10px] sm:text-[11px] uppercase font-bold text-zinc-400 mb-1.5 sm:mb-2 tracking-wider">Điều chỉnh tổng đơn</label>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-                <div className="flex-1 flex items-center bg-white rounded-xl sm:rounded-2xl border border-zinc-200 p-1 group hover:border-indigo-300 transition-all shadow-sm">
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="flex min-w-0 flex-[2_1_210px] items-center bg-white rounded-xl sm:rounded-2xl border border-zinc-200 p-1 group hover:border-indigo-300 transition-all shadow-sm">
                     <div className="relative">
                         <button
                             onClick={onToggleDropdown}
-                            className="bg-indigo-50 text-[11px] font-black text-indigo-700 outline-none px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg sm:rounded-xl pr-8 sm:pr-10 cursor-pointer hover:bg-indigo-100 transition-colors flex items-center gap-2 sm:gap-3 min-w-[100px] sm:min-w-[140px] relative uppercase tracking-tight whitespace-nowrap"
+                            className="bg-indigo-50 text-[11px] font-black text-indigo-700 outline-none px-3 py-2.5 sm:py-2 rounded-lg sm:rounded-xl pr-8 cursor-pointer hover:bg-indigo-100 transition-colors flex items-center gap-2 min-w-[100px] sm:min-w-[120px] relative uppercase tracking-tight whitespace-nowrap"
                         >
                             <div className={cn(
                                 "w-2 h-2 rounded-full shadow-sm shrink-0",
@@ -81,7 +89,7 @@ export function GlobalAdjustmentControl({
                         aria-label="Giá trị điều chỉnh"
                         value={globalAdjustment.amount === 0 ? '' : globalAdjustment.amount}
                         onChange={(e) => onAmountChange(e.target.value === '' ? 0 : Number(e.target.value))}
-                        className="w-full min-w-0 bg-transparent px-3 sm:px-4 py-2 sm:py-1 text-sm sm:text-base font-black text-zinc-900 outline-none placeholder:text-zinc-300"
+                        className="w-full min-w-0 bg-transparent px-2 sm:px-3 py-2 sm:py-1 text-sm sm:text-base font-black text-zinc-900 outline-none placeholder:text-zinc-300"
                         placeholder="0"
                     />
                     <button
@@ -95,6 +103,15 @@ export function GlobalAdjustmentControl({
                     >
                         {globalAdjustment.isPercentage ? <Percent size={18} /> : <DollarSign size={18} />}
                     </button>
+                </div>
+                <div className="flex min-w-0 flex-[1_1_150px] items-center rounded-xl border border-zinc-200 bg-white p-1 shadow-sm transition-colors hover:border-indigo-300 sm:rounded-2xl">
+                    <label className="flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-indigo-50 px-3 text-xs font-bold text-indigo-700 sm:rounded-xl">
+                        <input type="checkbox" checked={includeVAT} onChange={event => onToggleVAT(event.target.checked)} className="peer sr-only" />
+                        <span className={cn('flex h-4 w-4 shrink-0 items-center justify-center rounded border peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500', includeVAT ? 'border-indigo-600 bg-indigo-600' : 'border-indigo-300 bg-white')}><Check size={12} className={includeVAT ? 'text-white' : 'invisible'} strokeWidth={3} /></span>
+                        <span>VAT</span>
+                    </label>
+                    <input type="text" inputMode="decimal" aria-label="Thuế VAT phần trăm" disabled={!includeVAT} value={vatRate === 0 ? '' : vatRate} onChange={event => onVatRateChange(event.target.value === '' ? 0 : Number(event.target.value))} className="w-full min-w-0 bg-transparent px-2 text-sm font-bold text-zinc-900 outline-none disabled:text-zinc-400" />
+                    <span aria-hidden="true" className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl', includeVAT ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400')}><Percent size={18} /></span>
                 </div>
             </div>
         </div>

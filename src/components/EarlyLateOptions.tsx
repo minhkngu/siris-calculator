@@ -37,6 +37,9 @@ export function EarlyLateOptions({ selectedOptions, onToggle, calculation, forma
                     <span>Tùy chọn Check-in / Check-out</span>
                 </div>
                 <button
+                    type="button"
+                    aria-label="Tùy chọn check-in và check-out"
+                    aria-expanded={isExpanded}
                     onClick={() => setIsExpanded(!isExpanded)}
                     className="p-1 rounded-full hover:bg-slate-100 cursor-pointer transition-colors"
                 >
@@ -68,8 +71,13 @@ export function EarlyLateOptions({ selectedOptions, onToggle, calculation, forma
                         return (
                             <div
                                 key={option.type}
+                                role="checkbox"
+                                aria-checked={isSelected}
+                                aria-disabled={isLate1800Disabled}
+                                tabIndex={isLate1800Disabled ? -1 : 0}
+                                onKeyDown={event => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); if (!isLate1800Disabled) onToggle(option.type); } }}
                                 className={cn(
-                                    "group flex items-center justify-between p-3.5 border rounded-xl transition-all duration-200",
+                                    "group flex items-center justify-between gap-2 p-3 border rounded-xl transition-all duration-200",
                                     isLate1800Disabled
                                         ? 'border-slate-200 bg-slate-50/70 opacity-65 cursor-not-allowed select-none'
                                         : isSelected
@@ -120,11 +128,6 @@ export function EarlyLateOptions({ selectedOptions, onToggle, calculation, forma
                                                 </span>
                                             )}
                                         </div>
-                                        {isLate1800Disabled && (
-                                            <span className="text-[12px] text-amber-700/90 font-normal mt-0.5">
-                                                Khách sạn không hỗ trợ check-out 18:00 vào Thứ 6 & Thứ 7
-                                            </span>
-                                        )}
                                     </div>
                                 </div>
                                 {isLate1800Disabled ? (
@@ -145,12 +148,7 @@ export function EarlyLateOptions({ selectedOptions, onToggle, calculation, forma
                         );
                     })}
 
-                    {calculation && calculation.earlyLateTotal !== 0 && (
-                        <div className="flex justify-between items-center text-[14px] pt-2">
-                            <span className="font-semibold text-slate-700">Điều chỉnh check-in/check-out</span>
-                            <span className="font-bold text-blue-600">{calculation.earlyLateTotal > 0 ? '+' : ''}{formatCurrency(calculation.earlyLateTotal)}</span>
-                        </div>
-                    )}
+
                 </div>
             )}
         </div>

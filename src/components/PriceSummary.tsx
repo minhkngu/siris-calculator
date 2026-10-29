@@ -1,66 +1,52 @@
-import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Calculator, Tag, Percent, Check, ChevronDown, Copy } from 'lucide-react';
+import { Calculator, ChevronDown } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
 import { CalculationResult, GlobalAdjustment, EarlyCheckinLateCheckoutType } from './types';
 import { EarlyLateOptions } from './EarlyLateOptions';
 import { GoogleReviewsOption } from './GoogleReviewsOption';
+import { getPriceBreakdown } from '../lib/priceBreakdown';
+import { getPaymentBalance } from '../lib/paymentBalance';
 
 interface PriceSummaryProps {
     calculation: CalculationResult | null;
+    comparisonDifference: number;
+    comparisonName: string;
+    originalRoomName: string;
+    paidAmount: number;
+    onPaidAmountChange: (amount: number) => void;
     globalAdjustment: GlobalAdjustment;
     onToggleGoogleReviews: (checked: boolean) => void;
-    includeVAT: boolean;
-    vatRate: number;
     showNightlyDetails: boolean;
     onToggleNightlyDetails: () => void;
-    onToggleVAT: (checked: boolean) => void;
-    onVatRateChange: (rate: number) => void;
     formatCurrency: (amount: number) => string;
     selectedEarlyLateOptions: Set<EarlyCheckinLateCheckoutType>;
     onToggleEarlyLateOption: (type: EarlyCheckinLateCheckoutType) => void;
-    checkIn: string;
     checkOut: string;
-    branchName: string;
-    roomName: string;
 }
 
 export function PriceSummary({
     calculation,
+    comparisonDifference,
+    comparisonName,
+    originalRoomName,
+    paidAmount,
+    onPaidAmountChange,
     globalAdjustment,
     onToggleGoogleReviews,
-    includeVAT,
-    vatRate,
     showNightlyDetails,
     onToggleNightlyDetails,
-    onToggleVAT,
-    onVatRateChange,
     formatCurrency,
     selectedEarlyLateOptions,
     onToggleEarlyLateOption,
-    checkIn,
     checkOut,
-    branchName,
-    roomName,
 }: PriceSummaryProps) {
-    const [copiedText, setCopiedText] = useState('');
-    const [copyError, setCopyError] = useState('');
-    const quote = calculation && branchName && roomName
-        ? `${branchName} | ${roomName} | Check-in: ${format(parseISO(checkIn), 'dd/MM/yyyy')} | Check-out: ${format(parseISO(checkOut), 'dd/MM/yyyy')} | Tổng giá phòng: ${formatCurrency(calculation.finalTotal)}`
-        : '';
-
-    const handleCopy = async () => {
-        setCopyError('');
-        try {
-            await navigator.clipboard.writeText(quote);
-            setCopiedText(quote);
-        } catch {
-            setCopyError('Không thể sao chép tự động. Bạn có thể chọn dòng tổng hợp bên dưới để sao chép.');
-        }
-    };
-
+    const total = (calculation?.finalTotal ?? 0) + comparisonDifference;
+    const balance = getPaymentBalance(total, paidAmount);
+    const detailLines = calculation ? getPriceBreakdown([{ calculation, options: selectedEarlyLateOptions, checkOut }], globalAdjustment, calculation.vatValue, calculation.finalTotal, false).filter(line => line.kind !== 'total') : [];
+    if (comparisonName && comparisonDifference !== 0) detailLines.push({ label: `Chênh lệch: ${comparisonName}`, amount: comparisonDifference, kind: 'adjustment' });
+    const formatDetail = (amount: number) => `${amount < 0 ? '− ' : '+ '}${formatCurrency(Math.abs(amount))}`;
     return (
         <section className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-4 sm:p-6 transition-all">
             {calculation ? (
@@ -70,7 +56,7 @@ export function PriceSummary({
                         <div>
                             <div className="text-[11px] sm:text-[13px] font-semibold text-slate-500 mb-0.5 sm:mb-1">Tổng tiền thanh toán</div>
                             <div className="text-[22px] sm:text-[28px] font-bold text-slate-900 tracking-tight">
-                                {formatCurrency(calculation.finalTotal)}
+                                {formatCurrency(total)}
                             </div>
                         </div>
                         <div className="bg-slate-100 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[11px] sm:text-[13px] font-semibold text-slate-600">
@@ -78,60 +64,38 @@ export function PriceSummary({
                         </div>
                     </div>
 
-                    {quote && (
-                        <div className="mb-4 sm:mb-6 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
-                            <div className="flex items-center justify-between gap-3 mb-2">
-                                <label htmlFor="single-room-quote" className="text-xs font-semibold text-slate-700">Tổng hợp đặt phòng</label>
-                                <button
-                                    type="button"
-                                    onClick={handleCopy}
-                                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 focus-visible:outline-2 focus-visible:outline-indigo-500"
-                                >
-                                    {copiedText === quote ? <Check size={14} /> : <Copy size={14} />}
-                                    <span aria-live="polite">{copiedText === quote ? 'Đã sao chép' : 'Sao chép'}</span>
-                                </button>
-                            </div>
-                            <input
-                                id="single-room-quote"
-                                readOnly
-                                value={quote}
-                                onFocus={event => event.currentTarget.select()}
-                                className="w-full min-w-0 rounded-lg border border-indigo-100 bg-white px-3 py-2 text-xs text-slate-700 focus:outline-indigo-500"
-                            />
-                            {copyError && <p role="alert" className="mt-2 text-xs text-rose-600">{copyError}</p>}
+                    {comparisonName && (
+                        <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-sm text-slate-700 space-y-1">
+                            <p><span className="font-semibold">Phòng cũ:</span> {originalRoomName}</p>
+                            <p><span className="font-semibold">Phòng muốn đổi:</span> {comparisonName}</p>
                         </div>
                     )}
 
-                    {/* Deposit & Remaining */}
-                    <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6 p-3 sm:p-4 bg-slate-50/50 rounded-xl border border-slate-100">
-                        <div>
-                            <div className="text-[11px] sm:text-[13px] font-medium text-slate-500">Đặt cọc (50%)</div>
-                            <div className="text-[15px] sm:text-[18px] font-bold text-slate-900">{formatCurrency(calculation.deposit)}</div>
+                    <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/50 p-3 space-y-3 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                            <label htmlFor="paid-amount" className="font-medium text-slate-700">Đã thanh toán</label>
+                            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                                <input id="paid-amount" type="text" inputMode="numeric" value={paidAmount ? paidAmount.toLocaleString('vi-VN') : ''} onChange={event => onPaidAmountChange(Number(event.target.value.replace(/\D/g, '').slice(0, 15)) || 0)} placeholder="0" className="w-28 min-w-0 text-right font-semibold text-slate-900 outline-none" />
+                                <span className="text-slate-500">đ</span>
+                            </div>
                         </div>
-                        <div className="text-right">
-                            <div className="text-[11px] sm:text-[13px] font-medium text-slate-500">Còn lại</div>
-                            <div className="text-[15px] sm:text-[18px] font-bold text-slate-600">{formatCurrency(calculation.finalTotal - calculation.deposit)}</div>
-                        </div>
+                        <div className="flex justify-between gap-3 font-semibold text-slate-900"><span>Phải thanh toán thêm</span><span>{formatCurrency(balance.remaining)}</span></div>
+                        {balance.excess > 0 && <div className="flex justify-between gap-3 text-emerald-700"><span>Thanh toán dư</span><span className="font-semibold">{formatCurrency(balance.excess)}</span></div>}
                     </div>
 
-                    <div className="w-full h-px bg-slate-100 mb-4 sm:mb-5"></div>
-
-                    {/* Base Price */}
-                    <div className="mb-4 sm:mb-5">
-                        <div
-                            onClick={onToggleNightlyDetails}
-                            className="flex justify-between items-center cursor-pointer hover:text-slate-700 transition-colors"
-                        >
-                            <div className="flex items-center text-slate-500">
-                                <span className="text-[14px] sm:text-[15px] font-medium">Giá gốc ({calculation.nights.length} đêm)</span>
-                                <ChevronDown size={14} className={cn(
-                                    "ml-1 opacity-70 transition-transform sm:ml-1.5",
-                                    showNightlyDetails && "rotate-180"
-                                )} />
-                            </div>
-                            <div className="font-bold text-[14px] sm:text-[16px] text-slate-900">{formatCurrency(calculation.totalBase)}</div>
-                        </div>
-
+                    <div className="mb-4 sm:mb-6 space-y-2 text-sm">
+                        <h3 className="font-semibold text-slate-800">Chi tiết thanh toán</h3>
+                        {detailLines.map((line, index) => (
+                            <div key={index}>
+                                <div className="flex justify-between gap-3 text-slate-600">
+                                    {line.kind === 'base' ? (
+                                        <button type="button" onClick={onToggleNightlyDetails} aria-expanded={showNightlyDetails} className="flex items-center gap-1 text-left hover:text-slate-900">
+                                            <span>{line.label}</span><ChevronDown size={14} className={cn('shrink-0 transition-transform', showNightlyDetails && 'rotate-180')} />
+                                        </button>
+                                    ) : <span>{line.label}</span>}
+                                    <span className="shrink-0 font-semibold">{line.kind === 'base' ? formatCurrency(line.amount) : formatDetail(line.amount)}</span>
+                                </div>
+                                {line.kind === 'base' && (
                         <AnimatePresence>
                             {showNightlyDetails && (
                                 <AnimatedPanel
@@ -182,16 +146,11 @@ export function PriceSummary({
                                                             "text-[14px] font-bold",
                                                             hasAdjustment ? "text-slate-900" : "text-slate-500"
                                                         )}>
-                                                            {formatCurrency(night.finalPrice)}
+                                                            {formatCurrency(night.basePrice)}
                                                         </div>
-                                                        {night.vatPerNight > 0 && (
-                                                            <div className="text-[12px] text-slate-400">
-                                                                VAT: {formatCurrency(night.vatPerNight)}
-                                                            </div>
-                                                        )}
                                                         {hasAdjustment && (
-                                                            <div className="text-[12px] text-slate-400 line-through">
-                                                                {formatCurrency(night.basePrice)}
+                                                            <div className="text-[12px] text-slate-500">
+                                                                Sau điều chỉnh: {formatCurrency(night.finalPrice)}
                                                             </div>
                                                         )}
                                                     </div>
@@ -202,20 +161,13 @@ export function PriceSummary({
                                 </AnimatedPanel>
                             )}
                         </AnimatePresence>
+                                )}
+                            </div>
+                        ))}
+                        <div className="flex justify-between gap-3 border-t border-slate-200 pt-2 font-bold text-slate-900"><span>Giá cuối cùng</span><span>{formatCurrency(total)}</span></div>
                     </div>
 
                     <div className="w-full h-px bg-slate-100 mb-4 sm:mb-5"></div>
-
-                    {/* Stay Discount */}
-                    {calculation.stayDiscount && (
-                        <div className="flex justify-between items-center mb-4 sm:mb-5 p-3 sm:p-3.5 bg-indigo-50/50 border border-indigo-100 rounded-xl">
-                            <div className="flex items-center gap-2 sm:gap-2.5">
-                                <Percent size={14} className="text-indigo-500 shrink-0" />
-                                <span className="text-[14px] sm:text-[15px] font-medium text-indigo-700">{calculation.stayDiscount.name}</span>
-                            </div>
-                            <span className="font-bold text-[14px] sm:text-[15px] text-indigo-700 whitespace-nowrap">- {formatCurrency(calculation.stayDiscountValue)}</span>
-                        </div>
-                    )}
 
                     {/* Early / Late Options */}
                     <EarlyLateOptions
@@ -228,78 +180,7 @@ export function PriceSummary({
 
                     <div className="w-full h-px bg-slate-100 mb-4 sm:mb-5"></div>
 
-                    {/* Global Adjustment */}
-                    {globalAdjustment.amount !== 0 && (
-                        <div className={cn(
-                            "flex justify-between items-center mb-3 sm:mb-4 p-3 sm:p-3.5 rounded-xl",
-                            globalAdjustment.type === 'surcharge' ? "bg-rose-50/50 border border-rose-100" : "bg-emerald-50/50 border border-emerald-100"
-                        )}>
-                            <div className="flex items-center gap-2 sm:gap-2.5">
-                                <Tag size={14} className={globalAdjustment.type === 'surcharge' ? "text-rose-500 shrink-0" : "text-emerald-500 shrink-0"} />
-                                <span className="text-[14px] sm:text-[15px] font-medium text-slate-700">
-                                    {globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'} {globalAdjustment.isPercentage ? `${globalAdjustment.amount}%` : ''}
-                                </span>
-                            </div>
-                            <span className={cn(
-                                "font-bold text-[14px] sm:text-[15px] whitespace-nowrap",
-                                globalAdjustment.type === 'surcharge' ? "text-rose-600" : "text-emerald-600"
-                            )}>
-                                {globalAdjustment.type === 'surcharge' ? '+' : '-'} {formatCurrency(calculation.globalAdjustmentValue)}
-                            </span>
-                        </div>
-                    )}
-
-                    {/* VAT Section */}
-                    <div className="space-y-3 sm:space-y-4">
-                        <GoogleReviewsOption checked={!!globalAdjustment.googleReviews} onChange={onToggleGoogleReviews} />
-                        <div className="flex justify-between items-center">
-                            <label className="flex items-center cursor-pointer group">
-                                <div
-                                    className={cn(
-                                        "w-5 h-5 rounded-[6px] border flex items-center justify-center mr-3.5 transition-colors duration-200",
-                                        includeVAT
-                                            ? 'bg-blue-600 border-blue-600'
-                                            : 'border-slate-300 bg-white group-hover:border-blue-400'
-                                    )}
-                                    onClick={(e) => { e.preventDefault(); onToggleVAT(!includeVAT); }}
-                                >
-                                    <Check className={cn(
-                                        "w-3.5 h-3.5 text-white transition-transform duration-200",
-                                        includeVAT ? 'scale-100' : 'scale-0'
-                                    )} strokeWidth={3} />
-                                </div>
-                                <span
-                                    className={cn(
-                                        "text-[15px] transition-colors duration-200",
-                                        includeVAT ? 'text-slate-900 font-medium' : 'text-slate-700'
-                                    )}
-                                    onClick={() => onToggleVAT(!includeVAT)}
-                                >
-                                    Bao gồm VAT
-                                </span>
-                            </label>
-                            {includeVAT && (
-                                <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden w-[68px] sm:w-[76px] h-[30px] sm:h-[34px] focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all bg-white">
-                                    <input
-                                        type="text"
-                                        value={vatRate === 0 ? '' : vatRate}
-                                        onChange={(e) => onVatRateChange(e.target.value === '' ? 0 : Number(e.target.value))}
-                                        className="w-full h-full text-center text-blue-600 font-bold text-[13px] sm:text-[15px] focus:outline-none bg-transparent"
-                                    />
-                                    <span className="bg-slate-50 text-slate-500 px-2 sm:px-2.5 h-full flex items-center border-l border-slate-200 text-[12px] sm:text-[14px] font-medium">
-                                        %
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-
-                        {includeVAT && (
-                            <div className="flex justify-between items-center pl-[30px] sm:pl-[34px] transition-opacity duration-200 opacity-100">
-                                <span className="text-[13px] sm:text-[14px] text-slate-500 font-medium">Thuế VAT ({vatRate}%)</span>
-                                <span className="font-bold text-[14px] sm:text-[16px] text-slate-900">{formatCurrency(calculation.vatValue)}</span>
-                            </div>
-                        )}
-                    </div>
+                    <GoogleReviewsOption checked={!!globalAdjustment.googleReviews} onChange={onToggleGoogleReviews} />
                 </>
             ) : (
                 <div className="text-center py-8 sm:py-10">

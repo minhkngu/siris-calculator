@@ -1,12 +1,46 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { calculateForRoomLogic, calculateMultiRoomLogic } from '../src/lib/hotelCalculator.ts';
+import { getEarlyLateDetails } from '../src/lib/earlyLateDetails.ts';
+import { getPriceBreakdown } from '../src/lib/priceBreakdown.ts';
+import { getPaymentBalance } from '../src/lib/paymentBalance.ts';
 
 const room = { id: 'r1', branchId: 'b1', name: 'Standard', weekdayPrice: 1000000, weekendPrice: 1500000 };
 const branch = { id: 'b1', name: 'Branch' };
 const noAdjustment = { type: 'discount', amount: 0, isPercentage: false };
 const calculate = (start, end, adjustments = [], global = noAdjustment, discounts = [], vat = false, options = new Set()) =>
     calculateForRoomLogic(room, start, end, adjustments, global, discounts, vat, 10, options);
+
+test('remaining payment and overpayment follow the current total', () => {
+    assert.deepEqual(getPaymentBalance(870000, 400000), { remaining: 470000, excess: 0 });
+    assert.deepEqual(getPaymentBalance(870000, 870000), { remaining: 0, excess: 0 });
+    assert.deepEqual(getPaymentBalance(870000, 900000), { remaining: 0, excess: 30000 });
+    assert.deepEqual(getPaymentBalance(-10000, 50000), { remaining: 0, excess: 50000 });
+});
+
+test('early and late details match the charged amount, including restrictions', () => {
+    for (const [start, end, options] of [
+        ['2026-09-07', '2026-09-08', new Set(['early_0800', 'early_1230', 'late_1300', 'late_1800'])],
+        ['2026-09-10', '2026-09-11', new Set(['early_0800', 'late_1800'])],
+        ['2026-09-07', '2026-09-08', new Set(['checkin_2200', 'early_1230', 'late_1300'])],
+    ]) {
+        const result = calculate(start, end, [], noAdjustment, [], false, options);
+        const details = getEarlyLateDetails(result, options, end);
+        assert.equal(details.reduce((total, line) => total + line.amount, 0), result.earlyLateTotal);
+        if (end === '2026-09-11') assert.ok(!details.some(line => line.label.includes('18:00')));
+        if (options.has('checkin_2200')) assert.ok(!details.some(line => line.label.includes('12:30')));
+    }
+});
+
+test('payment details reconcile with discounts, fees, manual adjustment and VAT', () => {
+    const options = new Set(['early_0800', 'early_1230', 'late_1300']);
+    const adjustment = { type: 'surcharge', amount: 10, isPercentage: true, googleReviews: true };
+    const result = calculate('2026-09-07', '2026-09-08', [], adjustment, [], true, options);
+    const lines = getPriceBreakdown([{ calculation: result, options, checkOut: '2026-09-08' }], adjustment, result.vatValue, result.finalTotal, false);
+    assert.equal(lines.filter(line => line.kind !== 'total').reduce((sum, line) => sum + line.amount, 0), result.finalTotal);
+    assert.ok(lines.some(line => line.label === 'Google Reviews' && line.amount === -70000));
+    assert.ok(lines.some(line => line.label === 'Check-in sớm từ 12:30' && line.amount === 150000));
+});
 
 test('rejects missing, invalid, reversed and zero-night stays', () => {
     for (const [start, end] of [['', '2026-09-10'], ['invalid', '2026-09-10'], ['2026-09-10', '2026-09-10'], ['2026-09-11', '2026-09-10']]) {

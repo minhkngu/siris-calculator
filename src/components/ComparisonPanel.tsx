@@ -54,8 +54,9 @@ export function ComparisonPanel({
         <section className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
             {/* Header */}
             <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between border-b border-slate-100">
-                <div className="flex items-center gap-2">
+                <div>
                     <h3 className="text-[15px] font-semibold text-slate-800">So sánh lựa chọn</h3>
+                    <p className="text-xs text-slate-500">Chọn phòng muốn đổi để tính chênh lệch</p>
                 </div>
 
                 <div className="relative">
@@ -193,10 +194,12 @@ export function ComparisonPanel({
                             const isSelected = selectedRoomId === room.id;
 
                             return (
-                                <div
+                                <button
                                     key={room.id}
+                                    type="button"
+                                    aria-pressed={isSelected}
                                     className={cn(
-                                        "rounded-lg sm:rounded-xl border transition-all p-1.5 sm:p-2",
+                                        "w-full text-left rounded-lg sm:rounded-xl border transition-all p-1.5 sm:p-2",
                                         isSelected
                                             ? "bg-blue-50/80 border-blue-200 shadow-sm shadow-blue-100"
                                             : "bg-white border-slate-200 cursor-pointer hover:border-indigo-200 hover:bg-slate-50/60"
@@ -233,7 +236,7 @@ export function ComparisonPanel({
                                             </div>
                                         )}
                                     </div>
-                                </div>
+                                </button>
                             );
                         })}
                     </div>

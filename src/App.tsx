@@ -6,6 +6,7 @@ import { RoomDropdown } from './components/RoomDropdown';
 import { DateRangePicker } from './components/DateRangePicker';
 import { GlobalAdjustmentControl } from './components/GlobalAdjustmentControl';
 import { PriceSummary } from './components/PriceSummary';
+import { BookingSummary } from './components/BookingSummary';
 import { ComparisonPanel } from './components/ComparisonPanel';
 import { FetchErrorView } from './components/FetchErrorView';
 import { useCalculateForRoom, useComparisons, useMultiRoomCalculator } from './components/useHotelCalculator';
@@ -34,6 +35,7 @@ interface PersistedSession {
   roomMode: 'single' | 'multi';
   selectedBranchId: string;
   selectedRoomId: string;
+  paidAmount?: number;
   checkIn: string;
   checkOut: string;
   globalAdjustment: GlobalAdjustment;
@@ -127,6 +129,8 @@ export default function App() {
   const [stayDiscounts, setStayDiscounts] = useState<StayDiscount[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
+  const [comparisonRoomId, setComparisonRoomId] = useState<string | null>(null);
+  const [paidAmount, setPaidAmount] = useState(() => Number.isSafeInteger(savedSession?.paidAmount) && (savedSession?.paidAmount ?? -1) >= 0 ? savedSession!.paidAmount! : 0);
 
   const [checkIn, setCheckIn] = useState<string>(() => format(new Date(), 'yyyy-MM-dd'));
   const [checkOut, setCheckOut] = useState<string>(() => format(addDays(new Date(), 1), 'yyyy-MM-dd'));
@@ -173,6 +177,7 @@ export default function App() {
       roomMode,
       selectedBranchId,
       selectedRoomId,
+      paidAmount,
       checkIn,
       checkOut,
       globalAdjustment,
@@ -200,7 +205,7 @@ export default function App() {
     }
   }, [
     roomReady, itemsReady, savedSession, activeTab, roomMode, selectedBranchId, selectedRoomId, checkIn, checkOut,
-    globalAdjustment, includeVAT, vatRate, compareBranchIds, compareRoomIds,
+    globalAdjustment, includeVAT, vatRate, compareBranchIds, compareRoomIds, paidAmount,
     selectedEarlyLateOptions, multiRooms, selectedQuantities,
   ]);
 
@@ -434,6 +439,12 @@ export default function App() {
   const calculation = useCalculateForRoom(selectedRoom, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions);
 
   const comparisons = useComparisons(roomTypes, branches, compareBranchIds, compareRoomIds, selectedRoom, calculation, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions);
+  const comparisonRoom = roomTypes.find(room => room.id === comparisonRoomId);
+  const comparisonCalculation = useCalculateForRoom(comparisonRoom, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions);
+  const comparisonDifference = comparisonRoom && comparisonRoom.id !== selectedRoomId && comparisonCalculation && calculation
+    ? comparisonCalculation.finalTotal - calculation.finalTotal : 0;
+  const comparisonName = comparisonRoom && comparisonRoom.id !== selectedRoomId ? `${comparisonRoom.name} (${branches.find(branch => branch.id === comparisonRoom.branchId)?.name || ''})` : '';
+  useEffect(() => { setComparisonRoomId(null); }, [selectedBranchId, selectedRoomId]);
 
   // Multi-room calculation
   const multiRoomSummary = useMultiRoomCalculator(multiRooms, roomTypes, branches, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate);
@@ -641,6 +652,10 @@ export default function App() {
                         />
                         <GlobalAdjustmentControl
                           globalAdjustment={globalAdjustment}
+                          includeVAT={includeVAT}
+                          vatRate={vatRate}
+                          onToggleVAT={setIncludeVAT}
+                          onVatRateChange={setVatRate}
                           showDropdown={showGlobalAdjTypeDropdown}
                           onToggleDropdown={() => setShowGlobalAdjTypeDropdown(!showGlobalAdjTypeDropdown)}
                           onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
@@ -654,18 +669,16 @@ export default function App() {
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                       <div className="lg:col-span-5">
                         <PriceSummary
-                          checkIn={checkIn}
-                          branchName={branches.find(branch => branch.id === selectedBranchId)?.name || ''}
-                          roomName={selectedRoom?.name || ''}
                           calculation={calculation}
+                          comparisonDifference={comparisonDifference}
+                          comparisonName={comparisonName}
+                          originalRoomName={`${selectedRoom?.name || ''} (${branches.find(branch => branch.id === selectedBranchId)?.name || ''})`}
+                          paidAmount={paidAmount}
+                          onPaidAmountChange={setPaidAmount}
                           globalAdjustment={globalAdjustment}
                           onToggleGoogleReviews={(checked) => setGlobalAdjustment(prev => ({ ...prev, googleReviews: checked }))}
-                          includeVAT={includeVAT}
-                          vatRate={vatRate}
                           showNightlyDetails={showNightlyDetails}
                           onToggleNightlyDetails={() => setShowNightlyDetails(!showNightlyDetails)}
-                          onToggleVAT={(checked) => setIncludeVAT(checked)}
-                          onVatRateChange={(rate) => setVatRate(rate)}
                           formatCurrency={formatCurrency}
                           selectedEarlyLateOptions={selectedEarlyLateOptions}
                           onToggleEarlyLateOption={toggleEarlyLateOption}
@@ -681,7 +694,7 @@ export default function App() {
                           compareRoomIds={compareRoomIds}
                           showCompareFilter={showCompareFilter}
                           filterTab={filterTab}
-                          selectedRoomId={selectedRoomId}
+                          selectedRoomId={comparisonRoomId || selectedRoomId}
                           onToggleFilter={() => setShowCompareFilter(!showCompareFilter)}
                           onCloseFilter={() => setShowCompareFilter(false)}
                           onSetFilterTab={(tab) => setFilterTab(tab)}
@@ -695,10 +708,20 @@ export default function App() {
                             if (tab === 'branch') setCompareBranchIds([]);
                             else setCompareRoomIds([]);
                           }}
-                          onSelectRoom={(branchId, roomId) => {
-                            setSelectedBranchId(branchId);
-                            setSelectedRoomId(roomId);
-                          }}
+                          onSelectRoom={(_branchId, roomId) => setComparisonRoomId(current => roomId === selectedRoomId || roomId === current ? null : roomId)}
+                          formatCurrency={formatCurrency}
+                        />
+                        <BookingSummary
+                          calculation={calculation}
+                          comparisonDifference={comparisonDifference}
+                          comparisonName={comparisonName}
+                          paidAmount={paidAmount}
+                          globalAdjustment={globalAdjustment}
+                          selectedEarlyLateOptions={selectedEarlyLateOptions}
+                          checkIn={checkIn}
+                          checkOut={checkOut}
+                          branchName={branches.find(branch => branch.id === selectedBranchId)?.name || ''}
+                          roomName={selectedRoom?.name || ''}
                           formatCurrency={formatCurrency}
                         />
                       </div>
@@ -728,6 +751,10 @@ export default function App() {
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-2 sm:p-2.5 relative z-30">
                           <GlobalAdjustmentControl
                             globalAdjustment={globalAdjustment}
+                            includeVAT={includeVAT}
+                            vatRate={vatRate}
+                            onToggleVAT={setIncludeVAT}
+                            onVatRateChange={setVatRate}
                             showDropdown={showGlobalAdjTypeDropdown}
                             onToggleDropdown={() => setShowGlobalAdjTypeDropdown(!showGlobalAdjTypeDropdown)}
                             onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
@@ -743,8 +770,6 @@ export default function App() {
                           onToggleGoogleReviews={(checked) => setGlobalAdjustment(prev => ({ ...prev, googleReviews: checked }))}
                           includeVAT={includeVAT}
                           vatRate={vatRate}
-                          onToggleVAT={(checked) => setIncludeVAT(checked)}
-                          onVatRateChange={(rate) => setVatRate(rate)}
                           onToggleIncludeRoom={(index) => {
                             handleUpdateMultiRoom(index, {
                               isIncluded: multiRooms[index]?.isIncluded === false ? true : false

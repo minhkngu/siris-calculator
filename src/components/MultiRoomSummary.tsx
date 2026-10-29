@@ -4,6 +4,7 @@ import { cn } from '../lib/utils';
 import { GlobalAdjustment, MultiRoomTotalSummary } from './types';
 import { format, parseISO } from 'date-fns';
 import { GoogleReviewsOption } from './GoogleReviewsOption';
+import { getEarlyLateDetails } from '../lib/earlyLateDetails';
 
 interface MultiRoomSummaryProps {
     summary: MultiRoomTotalSummary;
@@ -11,8 +12,6 @@ interface MultiRoomSummaryProps {
     onToggleGoogleReviews: (checked: boolean) => void;
     includeVAT: boolean;
     vatRate: number;
-    onToggleVAT: (checked: boolean) => void;
-    onVatRateChange: (rate: number) => void;
     onToggleIncludeRoom?: (index: number) => void;
     formatCurrency: (amount: number) => string;
 }
@@ -23,8 +22,6 @@ export function MultiRoomSummary({
     onToggleGoogleReviews,
     includeVAT,
     vatRate,
-    onToggleVAT,
-    onVatRateChange,
     onToggleIncludeRoom,
     formatCurrency,
 }: MultiRoomSummaryProps) {
@@ -33,6 +30,9 @@ export function MultiRoomSummary({
     const [copySummaryError, setCopySummaryError] = useState('');
 
     const includedItems = summary.items.filter(it => it.item.isIncluded !== false);
+    const earlyLateDetails = summary.items.flatMap((item, index) => item.item.isIncluded !== false && item.calculation
+        ? getEarlyLateDetails(item.calculation, item.item.earlyLateOptions, item.item.checkOut).map(line => ({ ...line, label: `Phòng ${index + 1} · ${line.label}` })) : []);
+    const formatDetail = (amount: number) => `${amount < 0 ? '− ' : '+ '}${formatCurrency(Math.abs(amount))}`;
     const roomSummaryLines = includedItems.map(item => {
         const branchName = item.branch?.name || '';
         const roomName = item.room?.name || 'Phòng';
@@ -43,7 +43,7 @@ export function MultiRoomSummary({
         return `${branchName} | ${roomName} | Check-in: ${checkInStr} | Check-out: ${checkOutStr} | Tổng giá phòng: ${formatCurrency(total)}`;
     });
     const roomSummary = roomSummaryLines.length > 0
-        ? [...roomSummaryLines, `Tổng giá tất cả phòng: ${formatCurrency(summary.finalTotal)}`].join('\n')
+        ? [...roomSummaryLines, ...earlyLateDetails.map(line => `${line.label}: ${formatDetail(line.amount)}`), `Tổng giá tất cả phòng: ${formatCurrency(summary.finalTotal)}`].join('\n')
         : '';
 
     const handleCopySummary = async () => {
@@ -76,9 +76,7 @@ export function MultiRoomSummary({
         if (summary.totalStayDiscounts > 0) {
             text += `• Giảm giá lưu trú dài ngày: -${formatCurrency(summary.totalStayDiscounts)}\n`;
         }
-        if (summary.totalEarlyLate !== 0) {
-            text += `• Điều chỉnh check-in/check-out: ${summary.totalEarlyLate > 0 ? '+' : ''}${formatCurrency(summary.totalEarlyLate)}\n`;
-        }
+        for (const line of earlyLateDetails) text += `• ${line.label}: ${formatDetail(line.amount)}\n`;
         if (globalAdjustment.amount > 0) {
             text += `• ${globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'}: ${globalAdjustment.type === 'surcharge' ? '+' : '-'}${formatCurrency(summary.globalAdjustmentValue)}\n`;
         }
@@ -86,9 +84,7 @@ export function MultiRoomSummary({
         if (includeVAT) {
             text += `• Thuế VAT (${vatRate}%): +${formatCurrency(summary.vatValue)}\n`;
         }
-        text += `➡️ TỔNG THANH TOÁN: ${formatCurrency(summary.finalTotal)}\n`;
-        text += `👉 Đặt cọc 50%: ${formatCurrency(summary.deposit)}\n`;
-        text += `👉 Còn lại khi nhận phòng: ${formatCurrency(summary.finalTotal - summary.deposit)}`;
+        text += `➡️ TỔNG THANH TOÁN: ${formatCurrency(summary.finalTotal)}`;
 
         navigator.clipboard.writeText(text);
         setCopied(true);
@@ -140,18 +136,6 @@ export function MultiRoomSummary({
                     {copySummaryError && <p role="alert" className="mt-2 text-xs text-rose-600">{copySummaryError}</p>}
                 </div>
             )}
-
-            {/* Deposit & Remaining */}
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-6 p-2.5 sm:p-4 bg-slate-50/50 rounded-lg sm:rounded-xl border border-slate-100">
-                <div>
-                    <div className="text-[10px] sm:text-[13px] font-medium text-slate-500">Đặt cọc (50%)</div>
-                    <div className="text-sm sm:text-[18px] font-bold text-slate-900">{formatCurrency(summary.deposit)}</div>
-                </div>
-                <div className="text-right">
-                    <div className="text-[10px] sm:text-[13px] font-medium text-slate-500">Còn lại</div>
-                    <div className="text-sm sm:text-[18px] font-bold text-slate-600">{formatCurrency(summary.finalTotal - summary.deposit)}</div>
-                </div>
-            </div>
 
             {/* Room Breakdown List */}
             <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
@@ -237,12 +221,11 @@ export function MultiRoomSummary({
                     </div>
                 )}
 
-                {summary.totalEarlyLate !== 0 && (
-                    <div className="flex justify-between items-center text-blue-700 bg-blue-50/50 p-1.5 sm:p-2 rounded-lg border border-blue-100 text-[11px] sm:text-sm">
-                        <span>Điều chỉnh check-in/check-out</span>
-                        <span className="font-bold">{summary.totalEarlyLate > 0 ? '+' : ''}{formatCurrency(summary.totalEarlyLate)}</span>
+                {earlyLateDetails.map((line, index) => (
+                    <div key={index} className="flex justify-between gap-2 items-center text-blue-700 bg-blue-50/50 p-1.5 sm:p-2 rounded-lg border border-blue-100 text-[11px] sm:text-sm">
+                        <span>{line.label}</span><span className="font-bold shrink-0">{formatDetail(line.amount)}</span>
                     </div>
-                )}
+                ))}
 
                 {globalAdjustment.amount !== 0 && (
                     <div className={cn(
@@ -263,49 +246,8 @@ export function MultiRoomSummary({
             {/* VAT Section */}
             <div className="space-y-2 sm:space-y-3 pt-2.5 sm:pt-3 border-t border-slate-100 mb-4 sm:mb-5">
                 <GoogleReviewsOption checked={!!globalAdjustment.googleReviews} onChange={onToggleGoogleReviews} />
-                <div className="flex justify-between items-center">
-                    <label className="flex items-center cursor-pointer group">
-                        <div
-                            className={cn(
-                                "w-4 h-4 sm:w-5 sm:h-5 rounded sm:rounded-[6px] border flex items-center justify-center mr-2.5 sm:mr-3.5 transition-colors duration-200",
-                                includeVAT
-                                    ? 'bg-blue-600 border-blue-600'
-                                    : 'border-slate-300 bg-white group-hover:border-blue-400'
-                            )}
-                            onClick={(e) => { e.preventDefault(); onToggleVAT(!includeVAT); }}
-                        >
-                            <Check className={cn(
-                                "w-3 h-3 sm:w-3.5 sm:h-3.5 text-white transition-transform duration-200",
-                                includeVAT ? 'scale-100' : 'scale-0'
-                            )} strokeWidth={3} />
-                        </div>
-                        <span
-                            className={cn(
-                                "text-xs sm:text-[14px] transition-colors duration-200",
-                                includeVAT ? 'text-slate-900 font-medium' : 'text-slate-700'
-                            )}
-                            onClick={() => onToggleVAT(!includeVAT)}
-                        >
-                            Bao gồm VAT
-                        </span>
-                    </label>
-                    {includeVAT && (
-                        <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden w-[60px] sm:w-[76px] h-[28px] sm:h-[34px] focus-within:border-blue-500 transition-all bg-white">
-                            <input
-                                type="text"
-                                value={vatRate === 0 ? '' : vatRate}
-                                onChange={(e) => onVatRateChange(e.target.value === '' ? 0 : Number(e.target.value))}
-                                className="w-full h-full text-center text-blue-600 font-bold text-xs sm:text-[14px] focus:outline-none bg-transparent"
-                            />
-                            <span className="bg-slate-50 text-slate-500 px-1.5 sm:px-2 h-full flex items-center border-l border-slate-200 text-[10px] sm:text-xs font-medium">
-                                %
-                            </span>
-                        </div>
-                    )}
-                </div>
-
                 {includeVAT && (
-                    <div className="flex justify-between items-center pl-6 sm:pl-[34px]">
+                    <div className="flex justify-between items-center ">
                         <span className="text-[11px] sm:text-sm text-slate-500 font-medium">Thuế VAT ({vatRate}%)</span>
                         <span className="font-bold text-[11px] sm:text-sm text-slate-900">{formatCurrency(summary.vatValue)}</span>
                     </div>
