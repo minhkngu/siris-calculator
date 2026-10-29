@@ -1,22 +1,58 @@
-import { Check } from 'lucide-react';
+import { Check, Star } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface GoogleReviewsOptionProps {
-    checked: boolean;
-    onChange: (checked: boolean) => void;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
 }
 
 export function GoogleReviewsOption({ checked, onChange }: GoogleReviewsOptionProps) {
-    return (
-        <label className={cn('group flex items-center justify-between gap-2 p-3.5 border rounded-xl cursor-pointer transition-all duration-200', checked ? 'border-blue-500 bg-blue-50/40 shadow-sm' : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50/50 hover:shadow-sm')}>
-            <span className="flex items-center min-w-0">
-                <input type="checkbox" checked={checked} onChange={event => onChange(event.target.checked)} className="sr-only peer" />
-                <span className={cn('w-5 h-5 rounded-[6px] border flex items-center justify-center mr-3.5 shrink-0 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500', checked ? 'bg-blue-600 border-blue-600' : 'border-slate-300 bg-white group-hover:border-blue-400')}>
-                    <Check className={cn('w-3.5 h-3.5 text-white', checked ? 'scale-100' : 'scale-0')} strokeWidth={3} />
-                </span>
-                <span className={cn('text-[15px]', checked ? 'text-slate-900 font-medium' : 'text-slate-700')}>Google Reviews</span>
-            </span>
-            <span className={cn('px-2 py-1 rounded-md text-[12px] sm:text-[13px] font-semibold shrink-0', checked ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600')}>−10% · tối đa 70.000đ</span>
-        </label>
-    );
+  return (
+    <label
+      className={cn(
+        "group flex items-center justify-between gap-3 p-3 rounded-lg border transition-all cursor-pointer select-none",
+        checked
+          ? "bg-emerald-50/80 border-emerald-300 text-emerald-950"
+          : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50/50"
+      )}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="sr-only peer"
+        />
+        <div
+          className={cn(
+            "w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-colors",
+            checked
+              ? "bg-emerald-600 border-emerald-600 text-white"
+              : "border-slate-300 bg-white group-hover:border-slate-400"
+          )}
+        >
+          {checked && <Check size={11} strokeWidth={3} />}
+        </div>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Star size={14} className={cn(checked ? "text-amber-500 fill-amber-500" : "text-slate-400")} />
+          <span className={cn("text-xs font-semibold truncate", checked ? "text-emerald-950" : "text-slate-900")}>
+            Ưu đãi đánh giá Google Maps
+          </span>
+        </div>
+      </div>
+
+      <div className="shrink-0">
+        <span
+          className={cn(
+            "text-xs font-bold px-2 py-0.5 rounded tabular-nums",
+            checked
+              ? "bg-emerald-100 text-emerald-800"
+              : "bg-slate-100 text-slate-600"
+          )}
+        >
+          −10% (tối đa 70.000đ)
+        </span>
+      </div>
+    </label>
+  );
 }

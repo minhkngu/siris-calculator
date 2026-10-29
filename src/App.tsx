@@ -443,6 +443,8 @@ export default function App() {
   const comparisonCalculation = useCalculateForRoom(comparisonRoom, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions);
   const comparisonDifference = comparisonRoom && comparisonRoom.id !== selectedRoomId && comparisonCalculation && calculation
     ? comparisonCalculation.finalTotal - calculation.finalTotal : 0;
+  const comparisonVatDifference = comparisonRoom && comparisonRoom.id !== selectedRoomId && comparisonCalculation && calculation
+    ? comparisonCalculation.vatValue - calculation.vatValue : 0;
   const comparisonName = comparisonRoom && comparisonRoom.id !== selectedRoomId ? `${comparisonRoom.name} (${branches.find(branch => branch.id === comparisonRoom.branchId)?.name || ''})` : '';
   useEffect(() => { setComparisonRoomId(null); }, [selectedBranchId, selectedRoomId]);
 
@@ -542,68 +544,105 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen pb-20">
-      <main className="max-w-[1600px] mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        <div className="mb-4 sm:mb-8">
-          <h1 className="text-lg sm:text-2xl font-black tracking-tight text-zinc-900">Phần mềm nội bộ Siris Residences</h1>
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 sm:mb-6">
-          <div className="flex gap-1 sm:gap-2 p-1 bg-slate-100 rounded-xl w-fit">
-            <button
-              onClick={() => setActiveTab('room')}
-              className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg text-[13px] sm:text-[14px] font-semibold transition-all ${activeTab === 'room'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-                }`}
-            >
-              Tính tiền phòng
-            </button>
-            <button
-              onClick={() => setActiveTab('items')}
-              className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg text-[13px] sm:text-[14px] font-semibold transition-all ${activeTab === 'items'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-                }`}
-            >
-              Bồi thường vật dụng
-            </button>
+    <div className="min-h-dvh pb-16 bg-slate-50 text-slate-900">
+      {/* Top Application Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+          {/* Brand & Wordmark */}
+          <div className="flex items-center gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm sm:text-base tracking-tight text-slate-900">
+                  SIRIS RESIDENCES
+                </span>
+                <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60 uppercase">
+                  Nội bộ
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Mode Switcher (Single vs Multi Room) */}
-          {activeTab === 'room' && (
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+          {/* Tab Switcher */}
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
               <button
-                onClick={() => setRoomMode('single')}
-                className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${roomMode === 'single'
-                  ? 'bg-white text-indigo-700 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                type="button"
+                onClick={() => setActiveTab('room')}
+                className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                  activeTab === 'room'
+                    ? 'bg-white text-slate-900'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
               >
-                <Hotel size={15} />
-                Phòng đơn
+                Tính tiền phòng
               </button>
               <button
-                onClick={() => setRoomMode('multi')}
-                className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${roomMode === 'multi'
-                  ? 'bg-white text-indigo-700 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                type="button"
+                onClick={() => setActiveTab('items')}
+                className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                  activeTab === 'items'
+                    ? 'bg-white text-slate-900'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
               >
-                <Layers size={15} />
-                Nhiều phòng
+                Bồi thường vật dụng
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-6">
+        {/* Subheader: Room Mode Switcher */}
+        {activeTab === 'room' && (
+          <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                {roomMode === 'single' ? 'Báo giá phòng đơn' : 'Báo giá nhiều phòng'}
+              </h1>
+            </div>
+
+            <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setRoomMode('single')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                  roomMode === 'single'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <Hotel size={14} />
+                <span>Phòng đơn</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoomMode('multi')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                  roomMode === 'multi'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <Layers size={14} />
+                <span>Nhiều phòng</span>
                 {multiRooms.length > 1 && (
-                  <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center font-bold">
+                  <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${
+                    roomMode === 'multi' ? 'bg-white text-slate-900' : 'bg-slate-900 text-white'
+                  }`}>
                     {multiRooms.length}
                   </span>
                 )}
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {fetchError ? <FetchErrorView message={fetchError} onRetry={() => void fetchData(activeTab)} /> : loading ? <FeatureLoading /> : (
+        {fetchError ? (
+          <FetchErrorView message={fetchError} onRetry={() => void fetchData(activeTab)} />
+        ) : loading ? (
+          <FeatureLoading />
+        ) : (
           <FeatureBoundary key={activeTab} onReady={restoreScroll}>
             {activeTab === 'room' ? (
               <>
@@ -611,9 +650,10 @@ export default function App() {
 
                 {roomMode === 'single' ? (
                   /* Single Room Mode UI */
-                  <div className="space-y-4 sm:space-y-8">
-                    <section className="bg-white/90 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-lg shadow-slate-200/50 border border-slate-200/80 overflow-visible relative z-30">
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y divide-zinc-200 md:divide-zinc-200 xl:divide-y-0 xl:divide-x">
+                  <div className="space-y-5 sm:space-y-6">
+                    {/* Top Configuration Console */}
+                    <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-visible relative z-30">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-200">
                         <BranchDropdown
                           branches={branches}
                           selectedBranchId={selectedBranchId}
@@ -621,7 +661,7 @@ export default function App() {
                           onToggle={() => setShowBranchDropdown(!showBranchDropdown)}
                           onSelect={(id) => {
                             setSelectedBranchId(id);
-                            const available = roomTypes.filter(r => r.branchId === id);
+                            const available = roomTypes.filter((r) => r.branchId === id);
                             if (available.length > 0) {
                               setSelectedRoomId(available[0].id);
                             } else {
@@ -661,22 +701,44 @@ export default function App() {
                           onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
                           onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type })}
                           onAmountChange={(amount) => setGlobalAdjustment({ ...globalAdjustment, amount })}
-                          onTogglePercentage={() => setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })}
+                          onTogglePercentage={() =>
+                            setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })
+                          }
                         />
                       </div>
                     </section>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    {/* Dual Column Layout: Price Quote (Left) & Comparisons + Quote Assistant (Right) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
                       <div className="lg:col-span-5">
                         <PriceSummary
                           calculation={calculation}
                           comparisonDifference={comparisonDifference}
+                          comparisonVatDifference={comparisonVatDifference}
+                          mobileBookingSummary={<BookingSummary
+                          calculation={calculation}
+                          comparisonDifference={comparisonDifference}
+                          comparisonVatDifference={comparisonVatDifference}
+                          comparisonBranchName={branches.find(branch => branch.id === comparisonRoom?.branchId)?.name || ''}
+                          comparisonRoomName={comparisonRoom?.name || ''}
                           comparisonName={comparisonName}
-                          originalRoomName={`${selectedRoom?.name || ''} (${branches.find(branch => branch.id === selectedBranchId)?.name || ''})`}
+                          paidAmount={paidAmount}
+                          globalAdjustment={globalAdjustment}
+                          selectedEarlyLateOptions={selectedEarlyLateOptions}
+                          checkIn={checkIn}
+                          checkOut={checkOut}
+                          branchName={branches.find((branch) => branch.id === selectedBranchId)?.name || ''}
+                          roomName={selectedRoom?.name || ''}
+                          formatCurrency={formatCurrency}
+                        />}
+                          comparisonName={comparisonName}
+                          originalRoomName={`${selectedRoom?.name || ''} (${branches.find((branch) => branch.id === selectedBranchId)?.name || ''})`}
                           paidAmount={paidAmount}
                           onPaidAmountChange={setPaidAmount}
                           globalAdjustment={globalAdjustment}
-                          onToggleGoogleReviews={(checked) => setGlobalAdjustment(prev => ({ ...prev, googleReviews: checked }))}
+                          onToggleGoogleReviews={(checked) =>
+                            setGlobalAdjustment((prev) => ({ ...prev, googleReviews: checked }))
+                          }
                           showNightlyDetails={showNightlyDetails}
                           onToggleNightlyDetails={() => setShowNightlyDetails(!showNightlyDetails)}
                           formatCurrency={formatCurrency}
@@ -685,7 +747,25 @@ export default function App() {
                           checkOut={checkOut}
                         />
                       </div>
-                      <div className="lg:col-span-7">
+                      <div className="lg:col-span-7 space-y-5">
+                        <div className="hidden lg:block">
+                        <BookingSummary
+                          calculation={calculation}
+                          comparisonDifference={comparisonDifference}
+                          comparisonVatDifference={comparisonVatDifference}
+                          comparisonBranchName={branches.find(branch => branch.id === comparisonRoom?.branchId)?.name || ''}
+                          comparisonRoomName={comparisonRoom?.name || ''}
+                          comparisonName={comparisonName}
+                          paidAmount={paidAmount}
+                          globalAdjustment={globalAdjustment}
+                          selectedEarlyLateOptions={selectedEarlyLateOptions}
+                          checkIn={checkIn}
+                          checkOut={checkOut}
+                          branchName={branches.find((branch) => branch.id === selectedBranchId)?.name || ''}
+                          roomName={selectedRoom?.name || ''}
+                          formatCurrency={formatCurrency}
+                        />
+                        </div>
                         <ComparisonPanel
                           comparisons={comparisons}
                           branches={branches}
@@ -698,39 +778,40 @@ export default function App() {
                           onToggleFilter={() => setShowCompareFilter(!showCompareFilter)}
                           onCloseFilter={() => setShowCompareFilter(false)}
                           onSetFilterTab={(tab) => setFilterTab(tab)}
-                          onToggleBranchFilter={(id) => setCompareBranchIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                          onToggleRoomFilter={(id) => setCompareRoomIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                          onToggleBranchFilter={(id) =>
+                            setCompareBranchIds((prev) =>
+                              prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                            )
+                          }
+                          onToggleRoomFilter={(id) =>
+                            setCompareRoomIds((prev) =>
+                              prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                            )
+                          }
                           onSelectAll={(tab) => {
-                            if (tab === 'branch') setCompareBranchIds(branches.map(b => b.id));
-                            else setCompareRoomIds(roomTypes.map(r => r.id));
+                            if (tab === 'branch') setCompareBranchIds(branches.map((b) => b.id));
+                            else setCompareRoomIds(roomTypes.map((r) => r.id));
                           }}
                           onDeselectAll={(tab) => {
                             if (tab === 'branch') setCompareBranchIds([]);
                             else setCompareRoomIds([]);
                           }}
-                          onSelectRoom={(_branchId, roomId) => setComparisonRoomId(current => roomId === selectedRoomId || roomId === current ? null : roomId)}
+                          onSelectRoom={(_branchId, roomId) =>
+                            setComparisonRoomId((current) =>
+                              roomId === selectedRoomId || roomId === current ? null : roomId
+                            )
+                          }
                           formatCurrency={formatCurrency}
                         />
-                        <BookingSummary
-                          calculation={calculation}
-                          comparisonDifference={comparisonDifference}
-                          comparisonName={comparisonName}
-                          paidAmount={paidAmount}
-                          globalAdjustment={globalAdjustment}
-                          selectedEarlyLateOptions={selectedEarlyLateOptions}
-                          checkIn={checkIn}
-                          checkOut={checkOut}
-                          branchName={branches.find(branch => branch.id === selectedBranchId)?.name || ''}
-                          roomName={selectedRoom?.name || ''}
-                          formatCurrency={formatCurrency}
-                        />
+
+
                       </div>
                     </div>
                   </div>
                 ) : (
                   /* Multi-Room Mode UI */
                   <div className="space-y-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
                       <div className="lg:col-span-7 space-y-4">
                         <MultiRoomSelector
                           rooms={multiRooms}
@@ -746,9 +827,9 @@ export default function App() {
                         />
                       </div>
 
-                      <div className="lg:col-span-5 space-y-4 sticky top-6">
+                      <div className="lg:col-span-5 space-y-4 sticky top-20">
                         {/* Global adjustment control in multi-room mode */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-2 sm:p-2.5 relative z-30">
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 relative z-30">
                           <GlobalAdjustmentControl
                             globalAdjustment={globalAdjustment}
                             includeVAT={includeVAT}
@@ -760,19 +841,23 @@ export default function App() {
                             onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
                             onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type })}
                             onAmountChange={(amount) => setGlobalAdjustment({ ...globalAdjustment, amount })}
-                            onTogglePercentage={() => setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })}
+                            onTogglePercentage={() =>
+                              setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })
+                            }
                           />
                         </div>
 
                         <MultiRoomSummary
                           summary={multiRoomSummary}
                           globalAdjustment={globalAdjustment}
-                          onToggleGoogleReviews={(checked) => setGlobalAdjustment(prev => ({ ...prev, googleReviews: checked }))}
+                          onToggleGoogleReviews={(checked) =>
+                            setGlobalAdjustment((prev) => ({ ...prev, googleReviews: checked }))
+                          }
                           includeVAT={includeVAT}
                           vatRate={vatRate}
                           onToggleIncludeRoom={(index) => {
                             handleUpdateMultiRoom(index, {
-                              isIncluded: multiRooms[index]?.isIncluded === false ? true : false
+                              isIncluded: multiRooms[index]?.isIncluded === false ? true : false,
                             });
                           }}
                           formatCurrency={formatCurrency}
@@ -781,7 +866,6 @@ export default function App() {
                     </div>
                   </div>
                 )}
-
               </>
             ) : (
               <div className="max-w-[1600px] mx-auto">
@@ -796,8 +880,9 @@ export default function App() {
           </FeatureBoundary>
         )}
       </main>
-      <footer className="max-w-5xl mx-auto px-4 py-8 text-center">
-        <p className="text-sm text-slate-400">© 2026 Hotel Price Calculator. Built for efficiency.</p>
+
+      <footer className="max-w-5xl mx-auto px-4 py-8 text-center text-xs text-slate-400">
+        <p>© 2026 Siris Residences</p>
       </footer>
     </div>
   );

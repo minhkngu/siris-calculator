@@ -4,88 +4,138 @@ import { AnimatePresence } from 'motion/react';
 import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
 import { CalculationResult } from './types';
-
+import { Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
 import { FeatureBoundary } from './FeatureBoundary';
+
 const CalendarPicker = lazy(() => import('./CalendarPicker'));
 
 interface DateRangePickerProps {
-    checkIn: string;
-    checkOut: string;
-    showDatePicker: 'checkIn' | 'checkOut' | null;
-    calculation: CalculationResult | null;
-    onToggle: (type: 'checkIn' | 'checkOut') => void;
-    onChange: (type: 'checkIn' | 'checkOut', date: string) => void;
-    onClose: () => void;
+  checkIn: string;
+  checkOut: string;
+  showDatePicker: 'checkIn' | 'checkOut' | null;
+  calculation: CalculationResult | null;
+  onToggle: (type: 'checkIn' | 'checkOut') => void;
+  onChange: (type: 'checkIn' | 'checkOut', date: string) => void;
+  onClose: () => void;
 }
 
-export function DateRangePicker({ checkIn, checkOut, showDatePicker, calculation, onToggle, onChange, onClose }: DateRangePickerProps) {
-    return (
-        <div className="p-3 lg:p-4 relative">
-            <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-2 tracking-wider">
-                Thời gian lưu trú
-            </label>
-            <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-zinc-200 hover:border-indigo-200 transition-all shadow-sm">
-                <div className="flex-1 grid grid-cols-2 divide-x divide-zinc-200 overflow-hidden">
-                    <button
-                        onClick={() => onToggle('checkIn')}
-                        className="px-3 text-left group"
-                    >
-                        <div className="text-[9px] text-zinc-400 font-bold uppercase tracking-tighter">Nhận phòng</div>
-                        <div className="text-[13px] sm:text-sm font-black text-zinc-900 group-hover:text-indigo-600 transition-colors whitespace-nowrap">
-                            {checkIn ? format(parseISO(checkIn), 'dd/MM/yyyy') : 'Chọn'}
-                        </div>
-                    </button>
-                    <button
-                        onClick={() => onToggle('checkOut')}
-                        className="px-3 text-left group"
-                    >
-                        <div className="text-[9px] text-zinc-400 font-bold uppercase tracking-tighter">Trả phòng</div>
-                        <div className="text-[13px] sm:text-sm font-black text-zinc-900 group-hover:text-indigo-600 transition-colors whitespace-nowrap">
-                            {checkOut ? format(parseISO(checkOut), 'dd/MM/yyyy') : 'Chọn'}
-                        </div>
-                    </button>
-                </div>
-                <div className="w-9 h-9 bg-white rounded-xl shadow-sm border border-zinc-100 flex items-center justify-center text-indigo-600 shrink-0">
-                    <div className="text-center">
-                        <div className="text-[10px] font-black leading-none">{calculation?.nights.length || 0}</div>
-                        <div className="text-[7px] uppercase font-bold">đêm</div>
-                    </div>
-                </div>
-            </div>
+export function DateRangePicker({
+  checkIn,
+  checkOut,
+  showDatePicker,
+  calculation,
+  onToggle,
+  onChange,
+  onClose,
+}: DateRangePickerProps) {
+  const nightsCount = calculation?.nights.length || 0;
 
-            <AnimatePresence>
-                {showDatePicker && (
-                    <>
-                        <div className="fixed inset-0 z-40" onClick={onClose} />
-                        <AnimatedPanel
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            className={cn(
-                                "absolute top-full left-0 right-0 mt-2 bg-white shadow-2xl rounded-2xl border border-zinc-200 p-4 z-50 flex justify-center",
-                                showDatePicker === 'checkIn' ? "md:left-0 md:right-auto" : "md:right-0 md:left-auto"
-                            )}
-                        >
-                            <FeatureBoundary><CalendarPicker
-                                mode="single"
-                                captionLayout="dropdown"
-                                fromYear={2020}
-                                toYear={2035}
-                                selected={showDatePicker === 'checkIn' ? (checkIn ? parseISO(checkIn) : undefined) : (checkOut ? parseISO(checkOut) : undefined)}
-                                onSelect={(date) => {
-                                    if (date) {
-                                        onChange(showDatePicker, format(date, 'yyyy-MM-dd'));
-                                        onClose();
-                                    }
-                                }}
+  return (
+    <div className="relative p-3.5 sm:p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-1.5 h-5">
+        <label className="text-xs font-medium text-slate-500">
+          Thời gian lưu trú
+        </label>
+        <span className="text-[11px] font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded tabular-nums">
+          {nightsCount} đêm
+        </span>
+      </div>
 
-                                disabled={showDatePicker === 'checkOut' && checkIn ? { before: addDays(parseISO(checkIn), 1) } : undefined}
-                            /></FeatureBoundary>
-
-                        </AnimatedPanel>
-                    </>
-                )}
-            </AnimatePresence>
+      {/* Control Box */}
+      <div className="w-full h-12 px-2 bg-slate-50/80 hover:bg-white border border-slate-200 hover:border-slate-300 rounded-lg flex items-center gap-2 transition-colors">
+        <div className="w-8 h-8 rounded-md bg-slate-200/60 flex items-center justify-center text-slate-700 shrink-0">
+          <CalendarIcon size={16} />
         </div>
-    );
+
+        {/* Check-in button */}
+        <button
+          type="button"
+          onClick={() => onToggle('checkIn')}
+          className={cn(
+            "flex-1 text-left px-2 py-1 rounded transition-colors cursor-pointer",
+            showDatePicker === 'checkIn'
+              ? "bg-slate-900 text-white"
+              : "hover:bg-slate-200/60 text-slate-800"
+          )}
+        >
+          <div className={cn("text-[10px] font-medium leading-none", showDatePicker === 'checkIn' ? "text-slate-300" : "text-slate-400")}>
+            Nhận phòng
+          </div>
+          <div className={cn("text-xs sm:text-sm font-bold tabular-nums leading-tight mt-0.5", showDatePicker === 'checkIn' ? "text-white" : "text-slate-900")}>
+            {checkIn ? format(parseISO(checkIn), 'dd/MM/yyyy') : 'Chọn ngày'}
+          </div>
+        </button>
+
+        <ArrowRight size={13} className="text-slate-300 shrink-0" />
+
+        {/* Check-out button */}
+        <button
+          type="button"
+          onClick={() => onToggle('checkOut')}
+          className={cn(
+            "flex-1 text-left px-2 py-1 rounded transition-colors cursor-pointer",
+            showDatePicker === 'checkOut'
+              ? "bg-slate-900 text-white"
+              : "hover:bg-slate-200/60 text-slate-800"
+          )}
+        >
+          <div className={cn("text-[10px] font-medium leading-none", showDatePicker === 'checkOut' ? "text-slate-300" : "text-slate-400")}>
+            Trả phòng
+          </div>
+          <div className={cn("text-xs sm:text-sm font-bold tabular-nums leading-tight mt-0.5", showDatePicker === 'checkOut' ? "text-white" : "text-slate-900")}>
+            {checkOut ? format(parseISO(checkOut), 'dd/MM/yyyy') : 'Chọn ngày'}
+          </div>
+        </button>
+      </div>
+
+      {/* Calendar Popover */}
+      <AnimatePresence>
+        {showDatePicker && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={onClose} />
+            <AnimatedPanel
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.15 }}
+              className={cn(
+                "absolute top-full mt-1.5 bg-white shadow-xl rounded-xl border border-slate-200 p-3 z-50",
+                showDatePicker === 'checkIn' ? "left-0" : "right-0"
+              )}
+            >
+              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100 text-xs font-semibold text-slate-800">
+                <CalendarIcon size={14} className="text-slate-500" />
+                <span>{showDatePicker === 'checkIn' ? 'Chọn ngày nhận phòng' : 'Chọn ngày trả phòng'}</span>
+              </div>
+              <FeatureBoundary>
+                <CalendarPicker
+                  mode="single"
+                  captionLayout="dropdown"
+                  fromYear={2020}
+                  toYear={2035}
+                  selected={
+                    showDatePicker === 'checkIn'
+                      ? (checkIn ? parseISO(checkIn) : undefined)
+                      : (checkOut ? parseISO(checkOut) : undefined)
+                  }
+                  onSelect={(date) => {
+                    if (date) {
+                      onChange(showDatePicker, format(date, 'yyyy-MM-dd'));
+                      onClose();
+                    }
+                  }}
+                  disabled={
+                    showDatePicker === 'checkOut' && checkIn
+                      ? { before: addDays(parseISO(checkIn), 1) }
+                      : undefined
+                  }
+                />
+              </FeatureBoundary>
+            </AnimatedPanel>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }

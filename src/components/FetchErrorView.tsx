@@ -1,26 +1,30 @@
-import { Calculator } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface FetchErrorViewProps {
-    message: string;
-    onRetry?: () => void;
+  message: string;
+  onRetry?: () => void;
 }
 
 export function FetchErrorView({ message, onRetry }: FetchErrorViewProps) {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-48 bg-zinc-50 p-4">
-            <div className="bg-white p-8 rounded-3xl shadow-xl border border-zinc-200 max-w-md w-full text-center">
-                <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                    <Calculator size={32} />
-                </div>
-                <h2 className="text-2xl font-bold text-zinc-900 mb-2">Lỗi tải dữ liệu</h2>
-                <p className="text-zinc-500 mb-8">{message}</p>
-                <button
-                    onClick={onRetry ?? (() => window.location.reload())}
-                    className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
-                >
-                    Thử lại
-                </button>
-            </div>
+  return (
+    <div className="flex flex-col items-center justify-center min-h-64 p-4">
+      <div className="bg-white p-6 sm:p-8 rounded-xl border border-slate-200 max-w-md w-full text-center shadow-sm">
+        <div className="w-12 h-12 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center mx-auto mb-4 border border-amber-200">
+          <AlertTriangle size={24} />
         </div>
-    );
+        <h2 className="text-base sm:text-lg font-bold text-slate-900 mb-1.5">
+          Không thể tải dữ liệu
+        </h2>
+        <p className="text-xs sm:text-sm text-slate-500 mb-6">{message}</p>
+        <button
+          type="button"
+          onClick={onRetry ?? (() => window.location.reload())}
+          className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-2.5 rounded-lg text-xs sm:text-sm font-semibold hover:bg-slate-800 transition-colors shadow-sm cursor-pointer"
+        >
+          <RefreshCw size={14} />
+          <span>Thử tải lại</span>
+        </button>
+      </div>
+    </div>
+  );
 }
