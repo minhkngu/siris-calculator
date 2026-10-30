@@ -22,8 +22,8 @@ const ItemCompensation = lazy(loadItems);
 const MultiRoomSelector = lazy(loadMultiSelector);
 const MultiRoomSummary = lazy(loadMultiSummary);
 
-const currencyFormatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
-const formatCurrency = (amount: number) => currencyFormatter.format(amount);
+const currencyFormatter = new Intl.NumberFormat('vi-VN');
+const formatCurrency = (amount: number) => `${currencyFormatter.format(amount)} VND`;
 const SESSION_STATE_KEY = 'hotel-price-calculator:session:v1';
 const EARLY_LATE_OPTION_TYPES: EarlyCheckinLateCheckoutType[] = [
   'checkin_2200', 'early_0800', 'early_1230', 'early_1300', 'late_1300', 'late_1800',
@@ -547,12 +547,12 @@ export default function App() {
     <div className="min-h-dvh pb-16 bg-slate-50 text-slate-900">
       {/* Top Application Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
-        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-2 sm:py-0 sm:h-16 flex flex-col items-stretch sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
           {/* Brand & Wordmark */}
           <div className="flex items-center gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-sm sm:text-base tracking-tight text-slate-900">
+                <span className="font-bold text-sm sm:text-base tracking-tight text-slate-900 whitespace-nowrap">
                   SIRIS RESIDENCES
                 </span>
                 <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60 uppercase">
@@ -564,11 +564,11 @@ export default function App() {
 
           {/* Tab Switcher */}
           <div className="flex items-center gap-2">
-            <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+            <div className="flex gap-1 p-1 bg-slate-100 rounded-lg w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setActiveTab('room')}
-                className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                className={`flex-1 whitespace-nowrap px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
                   activeTab === 'room'
                     ? 'bg-white text-slate-900'
                     : 'text-slate-500 hover:text-slate-800'
@@ -579,7 +579,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setActiveTab('items')}
-                className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                className={`flex-1 whitespace-nowrap px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
                   activeTab === 'items'
                     ? 'bg-white text-slate-900'
                     : 'text-slate-500 hover:text-slate-800'

@@ -73,7 +73,7 @@ export const SurchargeBanner: React.FC<SurchargeBannerProps> = ({ adjustments })
               </span>
               <span className="text-amber-800/80 truncate max-w-[120px]">{adj.note || 'Phụ thu'}</span>
               <span className="font-bold text-amber-800 ml-0.5 tabular-nums">
-                +{(adj.amount || 0).toLocaleString()}{adj.isPercentage ? '%' : 'đ'}
+                +{(adj.amount || 0).toLocaleString()}{adj.isPercentage ? '%' : ' VND'}
               </span>
             </div>
           ))}
@@ -101,7 +101,7 @@ export const SurchargeBanner: React.FC<SurchargeBannerProps> = ({ adjustments })
                   <span className="text-amber-950 font-medium truncate">{adj.note || 'Phụ thu'}</span>
                 </div>
                 <span className="text-amber-800 font-bold shrink-0 tabular-nums">
-                  +{(adj.amount || 0).toLocaleString()}{adj.isPercentage ? '%' : ' đ'}
+                  +{(adj.amount || 0).toLocaleString()}{adj.isPercentage ? '%' : ' VND'}
                 </span>
               </li>
             ))}

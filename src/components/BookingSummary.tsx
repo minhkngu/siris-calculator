@@ -93,13 +93,13 @@ export function BookingSummary({
   const isCopied = copiedText === quote;
 
   return (
-    <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-3">
+    <section className="bg-slate-50/70 sm:bg-white rounded-xl border border-slate-200 p-3 sm:p-5 sm:shadow-sm space-y-2 sm:space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div>
           <label htmlFor={quoteId} className="text-xs font-semibold text-slate-900 block">
-            Nội dung báo giá nhanh
+            Báo giá nhanh
           </label>
-          <span className="text-[11px] text-slate-500">Soạn sẵn để gửi khách qua tin nhắn</span>
+          <span className="hidden sm:block text-[11px] text-slate-500">Soạn sẵn để gửi khách qua tin nhắn</span>
         </div>
 
         <button
@@ -113,7 +113,7 @@ export function BookingSummary({
           )}
         >
           {isCopied ? <Check size={14} strokeWidth={2.5} /> : <Copy size={14} />}
-          <span aria-live="polite">{isCopied ? 'Đã sao chép' : 'Sao chép tin nhắn'}</span>
+          <span aria-live="polite">{isCopied ? 'Đã sao chép' : 'Sao chép'}</span>
         </button>
       </div>
 
@@ -121,8 +121,8 @@ export function BookingSummary({
         id={quoteId}
         readOnly
         value={quote}
-        rows={Math.min(Math.max(quote.split('\n').length, 4), 9)}
-        className="w-full min-w-0 resize-y rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 text-xs leading-relaxed text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
+        rows={Math.min(Math.max(quote.split('\n').length, 3), 9)}
+        className="w-full min-w-0 resize-y rounded-lg border border-slate-200 bg-white sm:bg-slate-50/70 p-2.5 text-xs leading-relaxed text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
       />
       {copyError && <p role="alert" className="text-xs text-rose-600 font-medium">{copyError}</p>}
     </section>

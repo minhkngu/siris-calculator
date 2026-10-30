@@ -50,7 +50,7 @@ export function GoogleReviewsOption({ checked, onChange }: GoogleReviewsOptionPr
               : "bg-slate-100 text-slate-600"
           )}
         >
-          −10% (tối đa 70.000đ)
+          −10% (tối đa 70.000 VND)
         </span>
       </div>
     </label>

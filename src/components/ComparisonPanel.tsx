@@ -138,28 +138,34 @@ export function ComparisonPanel({
                           {compareBranchIds.includes(branch.id) && <Check size={13} />}
                         </button>
                       ))
-                    : roomTypes
-                        .filter((room) => compareBranchIds.length === 0 || compareBranchIds.includes(room.branchId))
-                        .map((room) => {
-                          const branch = branches.find((b) => b.id === room.branchId);
+                    : branches
+                        .filter((branch) => compareBranchIds.length === 0 || compareBranchIds.includes(branch.id))
+                        .map((branch) => {
+                          const rooms = roomTypes.filter((room) => room.branchId === branch.id);
+                          if (!rooms.length) return null;
+                          const color = branches.findIndex((item) => item.id === branch.id) % 2 === 0
+                            ? "bg-indigo-100 text-indigo-800"
+                            : "bg-emerald-100 text-emerald-800";
                           return (
-                            <button
-                              key={room.id}
-                              type="button"
-                              onClick={() => onToggleRoomFilter(room.id)}
-                              className={cn(
-                                "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors",
-                                compareRoomIds.includes(room.id)
-                                  ? "bg-slate-100 text-slate-900 font-semibold"
-                                  : "text-slate-600 hover:bg-slate-50"
-                              )}
-                            >
-                              <div className="flex items-center gap-1.5 truncate">
-                                <span>{room.name}</span>
-                                <span className="text-[10px] text-slate-400 truncate">({branch?.name})</span>
-                              </div>
-                              {compareRoomIds.includes(room.id) && <Check size={13} className="shrink-0" />}
-                            </button>
+                            <div key={branch.id} className="pt-1">
+                              <span className={cn("inline-block mx-2 mb-1 px-1.5 py-0.5 rounded text-[10px] font-semibold", color)}>{branch.name}</span>
+                              {rooms.map((room) => (
+                                <button
+                                  key={room.id}
+                                  type="button"
+                                  onClick={() => onToggleRoomFilter(room.id)}
+                                  className={cn(
+                                    "w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left",
+                                    compareRoomIds.includes(room.id)
+                                      ? "bg-slate-100 text-slate-900 font-semibold"
+                                      : "text-slate-600 hover:bg-slate-50"
+                                  )}
+                                >
+                                  <span>{room.name}</span>
+                                  {compareRoomIds.includes(room.id) && <Check size={13} className="shrink-0" />}
+                                </button>
+                              ))}
+                            </div>
                           );
                         })}
                 </div>
@@ -183,9 +189,12 @@ export function ComparisonPanel({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {comparisons.map(({ room, branch, calculation: roomCalc, diff }) => {
             const isSelected = selectedRoomId === room.id;
+            const branchColor = branches.findIndex((item) => item.id === branch?.id) % 2 === 0
+              ? "bg-indigo-100 text-indigo-800"
+              : "bg-emerald-100 text-emerald-800";
 
             return (
               <button
@@ -194,22 +203,22 @@ export function ComparisonPanel({
                 aria-pressed={isSelected}
                 onClick={() => onSelectRoom && onSelectRoom(room.branchId, room.id)}
                 className={cn(
-                  "w-full text-left rounded-lg border p-2.5 transition-all cursor-pointer",
+                  "w-full h-full flex flex-col text-left rounded-lg border p-2.5 transition-all cursor-pointer",
                   isSelected
                     ? "bg-slate-900 border-slate-900 text-white shadow-sm"
                     : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60"
                 )}
               >
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className={cn("text-xs font-semibold truncate", isSelected ? "text-white" : "text-slate-900")}>
+                <div className="flex items-start justify-between gap-1 mb-1 min-h-[2.25rem]">
+                  <span className={cn("text-xs font-semibold min-w-0 break-words", isSelected ? "text-white" : "text-slate-900")}>
                     {room.name}
                   </span>
-                  <span className={cn("text-[10px] font-medium px-1.5 py-0.2 rounded shrink-0", isSelected ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-600")}>
+                  <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0", branchColor)}>
                     {branch?.name}
                   </span>
                 </div>
 
-                <div className="flex items-baseline justify-between mt-1">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-1 mt-auto">
                   <div className={cn("text-xs sm:text-sm font-bold tabular-nums", isSelected ? "text-white" : "text-slate-900")}>
                     {roomCalc ? formatCurrency(roomCalc.finalTotal) : '—'}
                   </div>

@@ -55,7 +55,7 @@ export function EarlyLateOptions({
       </div>
 
       {isExpanded && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+        <div className="grid grid-cols-1 gap-1.5 pt-1">
           {EARLY_LATE_OPTIONS.map((option) => {
             const isLate1800Disabled = option.type === 'late_1800' && isWeekendCheckout;
             const isSelected = !isLate1800Disabled && selectedOptions.has(option.type);
@@ -92,7 +92,7 @@ export function EarlyLateOptions({
                   if (!isLate1800Disabled) onToggle(option.type);
                 }}
                 className={cn(
-                  "flex items-start justify-between gap-2 p-2.5 rounded-lg border text-left transition-all select-none",
+                  "flex items-center justify-between gap-3 px-3 py-2 rounded-lg border text-left transition-all select-none",
                   isLate1800Disabled
                     ? "bg-slate-50 border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
                     : isSelected
@@ -100,10 +100,10 @@ export function EarlyLateOptions({
                       : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50/50 cursor-pointer"
                 )}
               >
-                <div className="flex items-start gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
                   <div
                     className={cn(
-                      "w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border transition-colors",
+                      "w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-colors",
                       isLate1800Disabled
                         ? "border-slate-300 bg-slate-100"
                         : isSelected

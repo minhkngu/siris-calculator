@@ -1,4 +1,4 @@
-import { ChevronDown, Plus, Minus } from 'lucide-react';
+import { ChevronDown, Plus, Minus, Check } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
@@ -71,11 +71,8 @@ export function GlobalAdjustmentControl({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 4 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute top-full left-0 mt-1.5 w-44 bg-white shadow-xl rounded-xl border border-slate-200 p-1.5 z-50 overflow-hidden"
+                  className="absolute top-full left-0 mt-1.5 w-40 bg-white shadow-xl rounded-xl border border-slate-200 p-1.5 z-50 overflow-hidden"
                 >
-                  <div className="px-2 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
-                    Loại điều chỉnh
-                  </div>
                   <button
                     type="button"
                     onClick={() => {
@@ -93,7 +90,6 @@ export function GlobalAdjustmentControl({
                       </div>
                       <div>
                         <div className="font-semibold">Phụ thu (+)</div>
-                        <div className="text-[10px] text-slate-400">Cộng thêm vào tổng</div>
                       </div>
                     </div>
                     {isSurcharge && <Check size={14} className="text-amber-700 shrink-0" strokeWidth={2.5} />}
@@ -116,7 +112,6 @@ export function GlobalAdjustmentControl({
                       </div>
                       <div>
                         <div className="font-semibold">Giảm giá (−)</div>
-                        <div className="text-[10px] text-slate-400">Trừ bớt vào tổng</div>
                       </div>
                     </div>
                     {!isSurcharge && <Check size={14} className="text-emerald-700 shrink-0" strokeWidth={2.5} />}
@@ -161,7 +156,7 @@ export function GlobalAdjustmentControl({
               if (!globalAdjustment.isPercentage) onTogglePercentage();
             }}
             className={cn(
-              "px-2 py-0.5 rounded text-xs font-bold transition-colors cursor-pointer",
+              "w-12 h-8 rounded text-sm font-bold transition-colors cursor-pointer",
               globalAdjustment.isPercentage
                 ? "bg-slate-900 text-white shadow-xs"
                 : "text-slate-500 hover:text-slate-900"
@@ -171,18 +166,18 @@ export function GlobalAdjustmentControl({
           </button>
           <button
             type="button"
-            title="Tính theo số tiền VNĐ (đ)"
+            title="Tính theo số tiền VND"
             onClick={() => {
               if (globalAdjustment.isPercentage) onTogglePercentage();
             }}
             className={cn(
-              "px-2 py-0.5 rounded text-xs font-bold transition-colors cursor-pointer",
+              "w-12 h-8 rounded text-sm font-bold transition-colors cursor-pointer",
               !globalAdjustment.isPercentage
                 ? "bg-slate-900 text-white shadow-xs"
                 : "text-slate-500 hover:text-slate-900"
             )}
           >
-            đ
+            VND
           </button>
         </div>
       </div>
