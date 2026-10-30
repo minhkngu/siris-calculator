@@ -717,6 +717,7 @@ export default function App() {
                           comparisonVatDifference={comparisonVatDifference}
                           mobileBookingSummary={<BookingSummary
                           calculation={calculation}
+                          comparisonCalculation={comparisonCalculation}
                           comparisonDifference={comparisonDifference}
                           comparisonVatDifference={comparisonVatDifference}
                           comparisonBranchName={branches.find(branch => branch.id === comparisonRoom?.branchId)?.name || ''}
@@ -751,6 +752,7 @@ export default function App() {
                         <div className="hidden lg:block">
                         <BookingSummary
                           calculation={calculation}
+                          comparisonCalculation={comparisonCalculation}
                           comparisonDifference={comparisonDifference}
                           comparisonVatDifference={comparisonVatDifference}
                           comparisonBranchName={branches.find(branch => branch.id === comparisonRoom?.branchId)?.name || ''}

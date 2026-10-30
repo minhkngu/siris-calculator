@@ -8,6 +8,7 @@ import { cn } from '../lib/utils';
 
 interface BookingSummaryProps {
   calculation: CalculationResult | null;
+  comparisonCalculation: CalculationResult | null;
   comparisonDifference: number;
   comparisonVatDifference: number;
   comparisonName: string;
@@ -25,6 +26,7 @@ interface BookingSummaryProps {
 
 export function BookingSummary({
   calculation,
+  comparisonCalculation,
   comparisonDifference,
   comparisonVatDifference,
   comparisonName,
@@ -68,9 +70,9 @@ export function BookingSummary({
 
   const quote = [
     ...(comparisonName ? [
-      `Phòng cũ: ${branchName} | ${roomName} | ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} | ${formatCurrency(calculation.finalTotal)}`,
-      `Phòng đổi: ${comparisonBranchName} | ${comparisonRoomName} | ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} | ${formatCurrency(calculation.finalTotal + comparisonDifference)}`,
-    ] : [`Phòng: ${branchName} | ${roomName} | ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} | ${formatCurrency(calculation.finalTotal)}`]),
+      `Phòng cũ: ${branchName} | ${roomName} | ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} | ${formatCurrency(baseLine?.amount ?? 0)}`,
+      `Phòng đổi: ${comparisonBranchName} | ${comparisonRoomName} | ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} | ${formatCurrency(comparisonCalculation?.nights.reduce((sum, night) => sum + night.basePrice, 0) ?? 0)}`,
+    ] : [`Phòng: ${branchName} | ${roomName} | ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} | ${formatCurrency(baseLine?.amount ?? 0)}`]),
     ...adjustments.map((line) => `${line.label}: ${line.amount < 0 ? '− ' : '+ '}${formatCurrency(Math.abs(line.amount))}`),
     `Tổng: ${formatCurrency(calculation.finalTotal + comparisonDifference)}`,
     ...(paidAmount > 0
