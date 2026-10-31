@@ -7,8 +7,9 @@ const tables = {
 
 export function createSupabaseReader({ env = process.env, fetchImpl = fetch } = {}) {
   return async () => {
-    const { SUPABASE_URL: url, SUPABASE_PUBLISHABLE_KEY: key } = env;
-    if (!url || !key) throw new FlyerDataError('Chưa cấu hình SUPABASE_URL và SUPABASE_PUBLISHABLE_KEY trên server.', 503);
+    const url = env.VITE_SUPABASE_URL;
+    const key = env.VITE_SUPABASE_ANON_KEY;
+    if (!url || !key) throw new FlyerDataError('Chưa cấu hình VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY dùng chung cho ứng dụng.', 503);
     const entries = await Promise.all(Object.entries(tables).map(async ([name, table]) => {
       const rows = [];
       for (let offset = 0; ; offset += 1000) {
