@@ -175,7 +175,7 @@ export function MultiRoomSummary({
                       title={isIncluded ? "Bỏ tính phòng này" : "Tính phòng này"}
                       className={cn(
                         "w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0",
-                        isIncluded ? "bg-slate-900 border-slate-900 text-white" : "border-slate-300 bg-white"
+                        isIncluded ? "bg-brand-700 border-brand-700 text-white" : "border-slate-300 bg-white"
                       )}
                     >
                       {isIncluded && <Check size={11} strokeWidth={3} />}
@@ -259,7 +259,7 @@ export function MultiRoomSummary({
         onClick={handleCopyQuote}
         className={cn(
           "w-full py-2.5 px-4 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer",
-          copied ? "bg-emerald-600 text-white" : "bg-slate-900 text-white hover:bg-slate-800"
+          copied ? "bg-emerald-600 text-white" : "bg-brand-700 text-white hover:bg-brand-800"
         )}
       >
         {copied ? (

@@ -46,7 +46,7 @@ export function EarlyLateOptions({
           <Clock size={15} className="text-slate-500" />
           <span>Tùy chọn nhận sớm / trả muộn</span>
           {selectedOptions.size > 0 && (
-            <span className="bg-slate-900 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full tabular-nums">
+            <span className="bg-brand-700 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full tabular-nums">
               {selectedOptions.size}
             </span>
           )}
@@ -96,7 +96,7 @@ export function EarlyLateOptions({
                   isLate1800Disabled
                     ? "bg-slate-50 border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
                     : isSelected
-                      ? "bg-slate-900 border-slate-900 text-white cursor-pointer shadow-sm"
+                      ? "bg-brand-700 border-brand-700 text-white cursor-pointer shadow-sm"
                       : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50/50 cursor-pointer"
                 )}
               >

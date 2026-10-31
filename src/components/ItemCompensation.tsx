@@ -70,7 +70,7 @@ export function ItemCompensation({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm theo tên vật dụng hoặc danh mục..."
-            className="w-full h-9 pl-9 pr-3 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 focus:bg-white transition-colors placeholder:text-slate-400"
+            className="w-full h-9 pl-9 pr-3 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-brand-700 focus:bg-white transition-colors placeholder:text-slate-400"
           />
         </div>
         <span className="text-xs text-slate-400 font-medium tabular-nums shrink-0">
@@ -116,7 +116,7 @@ export function ItemCompensation({
                       className={cn(
                         "relative flex flex-col p-2.5 rounded-lg border text-left transition-all cursor-pointer select-none",
                         isSelected
-                          ? "bg-slate-900 border-slate-900 text-white shadow-sm"
+                          ? "bg-brand-700 border-brand-700 text-white shadow-sm"
                           : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
                       )}
                     >
@@ -157,7 +157,7 @@ export function ItemCompensation({
                               }}
                               className={cn(
                                 "w-5 h-5 flex items-center justify-center transition-colors",
-                                qty > 1 ? "hover:bg-slate-700 text-white" : "text-slate-500 cursor-not-allowed"
+                                qty > 1 ? "hover:bg-brand-800 text-white" : "text-slate-500 cursor-not-allowed"
                               )}
                               disabled={qty <= 1}
                             >
@@ -174,7 +174,7 @@ export function ItemCompensation({
                               }}
                               className={cn(
                                 "w-5 h-5 flex items-center justify-center transition-colors",
-                                qty < item.quantity ? "hover:bg-slate-700 text-white" : "text-slate-500 cursor-not-allowed"
+                                qty < item.quantity ? "hover:bg-brand-800 text-white" : "text-slate-500 cursor-not-allowed"
                               )}
                               disabled={qty >= item.quantity}
                             >

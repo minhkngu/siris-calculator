@@ -57,7 +57,7 @@ export function ComparisonPanel({
             className={cn(
               "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors",
               compareBranchIds.length < branches.length || compareRoomIds.length < roomTypes.length
-                ? "bg-slate-900 text-white"
+                ? "bg-brand-700 text-white"
                 : "bg-slate-100 text-slate-700 hover:bg-slate-200"
             )}
           >
@@ -205,7 +205,7 @@ export function ComparisonPanel({
                 className={cn(
                   "w-full h-full flex flex-col text-left rounded-lg border p-2.5 transition-all cursor-pointer",
                   isSelected
-                    ? "bg-slate-900 border-slate-900 text-white shadow-sm"
+                    ? "bg-brand-700 border-brand-700 text-white shadow-sm"
                     : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60"
                 )}
               >

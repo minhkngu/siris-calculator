@@ -77,7 +77,7 @@ export function MultiRoomSelector({
             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0 shadow-sm",
             rooms.length >= 10
               ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-              : "bg-slate-900 text-white hover:bg-slate-800 cursor-pointer"
+              : "bg-brand-700 text-white hover:bg-brand-800 cursor-pointer"
           )}
         >
           <Plus size={14} />
@@ -115,7 +115,7 @@ export function MultiRoomSelector({
                     className={cn(
                       "w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0",
                       roomItem.isIncluded !== false
-                        ? "bg-slate-900 border-slate-900 text-white"
+                        ? "bg-brand-700 border-brand-700 text-white"
                         : "border-slate-300 bg-white"
                     )}
                   >
@@ -219,7 +219,7 @@ export function MultiRoomSelector({
                                 className={cn(
                                   "w-full flex items-center justify-between p-2 rounded-lg text-xs transition-colors text-left",
                                   roomItem.branchId === b.id
-                                    ? "bg-slate-900 text-white font-semibold"
+                                    ? "bg-brand-700 text-white font-semibold"
                                     : "hover:bg-slate-100 text-slate-700"
                                 )}
                               >
@@ -268,7 +268,7 @@ export function MultiRoomSelector({
                                 className={cn(
                                   "w-full flex items-center justify-between p-2 rounded-lg text-xs transition-colors text-left",
                                   roomItem.roomId === r.id
-                                    ? "bg-slate-900 text-white font-semibold"
+                                    ? "bg-brand-700 text-white font-semibold"
                                     : "hover:bg-slate-100 text-slate-700"
                                 )}
                               >
@@ -395,7 +395,7 @@ export function MultiRoomSelector({
                     className={cn(
                       "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors border",
                       roomItem.earlyLateOptions.size > 0
-                        ? "bg-slate-900 border-slate-900 text-white"
+                        ? "bg-brand-700 border-brand-700 text-white"
                         : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
                     )}
                   >
@@ -480,7 +480,7 @@ export function MultiRoomSelector({
                               isLate1800Disabled
                                 ? "bg-slate-100/70 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
                                 : isSelected
-                                  ? "bg-slate-900 border-slate-900 text-white cursor-pointer"
+                                  ? "bg-brand-700 border-brand-700 text-white cursor-pointer"
                                   : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 cursor-pointer"
                             )}
                           >

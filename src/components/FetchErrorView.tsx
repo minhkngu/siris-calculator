@@ -19,7 +19,7 @@ export function FetchErrorView({ message, onRetry }: FetchErrorViewProps) {
         <button
           type="button"
           onClick={onRetry ?? (() => window.location.reload())}
-          className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-2.5 rounded-lg text-xs sm:text-sm font-semibold hover:bg-slate-800 transition-colors shadow-sm cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 bg-brand-700 text-white py-2.5 rounded-lg text-xs sm:text-sm font-semibold hover:bg-brand-800 transition-colors shadow-sm cursor-pointer"
         >
           <RefreshCw size={14} />
           <span>Thử tải lại</span>

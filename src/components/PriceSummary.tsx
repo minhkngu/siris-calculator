@@ -105,7 +105,7 @@ export function PriceSummary({
               <label htmlFor="paid-amount" className="font-medium text-slate-600">
                 Đã thanh toán
               </label>
-              <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-md px-2.5 py-1 focus-within:border-slate-900">
+              <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-md px-2.5 py-1 focus-within:border-brand-700">
                 <input
                   id="paid-amount"
                   type="text"

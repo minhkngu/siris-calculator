@@ -19,6 +19,8 @@ const loadItems = () => import('./components/ItemCompensation').then(module => (
 const loadMultiSelector = () => import('./components/MultiRoomSelector').then(module => ({ default: module.MultiRoomSelector }));
 const loadMultiSummary = () => import('./components/MultiRoomSummary').then(module => ({ default: module.MultiRoomSummary }));
 const ItemCompensation = lazy(loadItems);
+const loadFlyer = () => import('./features/flyer/App');
+const FlyerStudio = lazy(loadFlyer);
 const MultiRoomSelector = lazy(loadMultiSelector);
 const MultiRoomSummary = lazy(loadMultiSummary);
 
@@ -31,7 +33,7 @@ const EARLY_LATE_OPTION_TYPES: EarlyCheckinLateCheckoutType[] = [
 
 interface PersistedSession {
   version: 1;
-  activeTab: 'room' | 'items';
+  activeTab: 'room' | 'items' | 'flyer';
   roomMode: 'single' | 'multi';
   selectedBranchId: string;
   selectedRoomId: string;
@@ -120,8 +122,9 @@ export default function App() {
   const restoreScrollY = useRef<number | null>(savedSession?.scrollY ?? 0);
   const [roomReady, setRoomReady] = useState(false);
   const [itemsReady, setItemsReady] = useState(false);
-  const requests = useRef<Partial<Record<'room' | 'items', Promise<void>>>>({});
-  const [activeTab, setActiveTab] = useState<'room' | 'items'>(() => savedSession?.activeTab === 'items' ? 'items' : 'room');
+  const requests = useRef<Partial<Record<'room' | 'items' | 'flyer', Promise<void>>>>({});
+  const [activeTab, setActiveTab] = useState<'room' | 'items' | 'flyer'>(() => savedSession?.activeTab === 'items' ? 'items' : 'room');
+  const [flyerVisited, setFlyerVisited] = useState(false);
   const [roomMode, setRoomMode] = useState<'single' | 'multi'>(() => savedSession?.roomMode === 'multi' ? 'multi' : 'single');
 
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -404,7 +407,7 @@ export default function App() {
   }, [savedSession]);
 
   useEffect(() => {
-    if (activeTab === 'room' ? !roomReady && !roomError : !itemsReady && !itemsError) void fetchData(activeTab);
+    if (activeTab !== 'flyer' && (activeTab === 'room' ? !roomReady && !roomError : !itemsReady && !itemsError)) void fetchData(activeTab);
   }, [activeTab, roomReady, itemsReady, roomError, itemsError, fetchData]);
 
   useEffect(() => {
@@ -552,7 +555,7 @@ export default function App() {
           <div className="flex items-center gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-sm sm:text-base tracking-tight text-slate-900 whitespace-nowrap">
+                <span className="font-bold text-sm sm:text-base tracking-tight text-brand-800 whitespace-nowrap">
                   SIRIS RESIDENCES
                 </span>
                 <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60 uppercase">
@@ -570,7 +573,7 @@ export default function App() {
                 onClick={() => setActiveTab('room')}
                 className={`flex-1 whitespace-nowrap px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
                   activeTab === 'room'
-                    ? 'bg-white text-slate-900'
+                    ? 'bg-brand-700 text-white'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -581,12 +584,13 @@ export default function App() {
                 onClick={() => setActiveTab('items')}
                 className={`flex-1 whitespace-nowrap px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
                   activeTab === 'items'
-                    ? 'bg-white text-slate-900'
+                    ? 'bg-brand-700 text-white'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
                 Bồi thường vật dụng
               </button>
+              <button type="button" onPointerEnter={() => void loadFlyer().catch(() => {})} onFocus={() => void loadFlyer().catch(() => {})} onClick={() => { setFlyerVisited(true); setActiveTab('flyer'); }} className={`flex-1 whitespace-nowrap px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold ${activeTab === 'flyer' ? 'bg-brand-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Tạo ảnh</button>
             </div>
           </div>
         </div>
@@ -628,7 +632,7 @@ export default function App() {
                 <span>Nhiều phòng</span>
                 {multiRooms.length > 1 && (
                   <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${
-                    roomMode === 'multi' ? 'bg-white text-slate-900' : 'bg-slate-900 text-white'
+                    roomMode === 'multi' ? 'bg-brand-700 text-white' : 'bg-slate-900 text-white'
                   }`}>
                     {multiRooms.length}
                   </span>
@@ -638,8 +642,9 @@ export default function App() {
           </div>
         )}
 
-        {fetchError ? (
-          <FetchErrorView message={fetchError} onRetry={() => void fetchData(activeTab)} />
+        {flyerVisited && <div key="flyer-studio" hidden={activeTab !== 'flyer'}><FeatureBoundary><FlyerStudio /></FeatureBoundary></div>}
+        {activeTab !== 'flyer' && (fetchError ? (
+          <FetchErrorView message={fetchError} onRetry={() => void fetchData(activeTab === 'room' ? 'room' : 'items')} />
         ) : loading ? (
           <FeatureLoading />
         ) : (
@@ -880,7 +885,7 @@ export default function App() {
               </div>
             )}
           </FeatureBoundary>
-        )}
+        ))}
       </main>
 
       <footer className="max-w-5xl mx-auto px-4 py-8 text-center text-xs text-slate-400">

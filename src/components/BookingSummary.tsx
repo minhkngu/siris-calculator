@@ -111,7 +111,7 @@ export function BookingSummary({
             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0 cursor-pointer",
             isCopied
               ? "bg-emerald-600 text-white hover:bg-emerald-700"
-              : "bg-slate-900 text-white hover:bg-slate-800"
+              : "bg-brand-700 text-white hover:bg-brand-800"
           )}
         >
           {isCopied ? <Check size={14} strokeWidth={2.5} /> : <Copy size={14} />}
@@ -124,7 +124,7 @@ export function BookingSummary({
         readOnly
         value={quote}
         rows={Math.min(Math.max(quote.split('\n').length, 3), 9)}
-        className="w-full min-w-0 resize-y rounded-lg border border-slate-200 bg-white sm:bg-slate-50/70 p-2.5 text-xs leading-relaxed text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
+        className="w-full min-w-0 resize-y rounded-lg border border-slate-200 bg-white sm:bg-slate-50/70 p-2.5 text-xs leading-relaxed text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-700"
       />
       {copyError && <p role="alert" className="text-xs text-rose-600 font-medium">{copyError}</p>}
     </section>

@@ -55,7 +55,7 @@ export function DateRangePicker({
           className={cn(
             "flex-1 text-left px-2 py-1 rounded transition-colors cursor-pointer",
             showDatePicker === 'checkIn'
-              ? "bg-slate-900 text-white"
+              ? "bg-brand-700 text-white"
               : "hover:bg-slate-200/60 text-slate-800"
           )}
         >
@@ -76,7 +76,7 @@ export function DateRangePicker({
           className={cn(
             "flex-1 text-left px-2 py-1 rounded transition-colors cursor-pointer",
             showDatePicker === 'checkOut'
-              ? "bg-slate-900 text-white"
+              ? "bg-brand-700 text-white"
               : "hover:bg-slate-200/60 text-slate-800"
           )}
         >

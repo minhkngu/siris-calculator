@@ -1,6 +1,18 @@
 @import "tailwindcss";
 
 @theme {
+  --color-slate-50: #f0f5f5;
+  --color-slate-100: #e4eeee;
+  --color-slate-200: #cedede;
+  --color-slate-400: #607b7c;
+  --color-slate-500: #496467;
+  --color-slate-600: #354e52;
+  --color-slate-700: #263f44;
+  --color-brand-50: #e5f5f0;
+  --color-brand-100: #cdebe2;
+  --color-brand-700: #087565;
+  --color-brand-800: #075f53;
+  --color-brand-900: #084c44;
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
@@ -92,3 +104,4 @@
   color: #0f172a;
   font-size: 0.9375rem;
 }
+

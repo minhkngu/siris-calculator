@@ -44,7 +44,7 @@ export function GlobalAdjustmentControl({
       </div>
 
       {/* Control Box */}
-      <div className="w-full h-12 px-2 bg-slate-50/80 hover:bg-white border border-slate-200 hover:border-slate-300 rounded-lg flex items-center gap-2 transition-colors focus-within:bg-white focus-within:border-slate-900 focus-within:ring-1 focus-within:ring-slate-900">
+      <div className="w-full h-12 px-2 bg-slate-50/80 hover:bg-white border border-slate-200 hover:border-slate-300 rounded-lg flex items-center gap-2 transition-colors focus-within:bg-white focus-within:border-brand-700 focus-within:ring-1 focus-within:ring-brand-700">
         {/* Type Selector Dropdown Trigger */}
         <div className="relative shrink-0">
           <button
@@ -158,7 +158,7 @@ export function GlobalAdjustmentControl({
             className={cn(
               "w-12 h-8 rounded text-sm font-bold transition-colors cursor-pointer",
               globalAdjustment.isPercentage
-                ? "bg-slate-900 text-white shadow-xs"
+                ? "bg-brand-700 text-white shadow-xs"
                 : "text-slate-500 hover:text-slate-900"
             )}
           >
@@ -173,7 +173,7 @@ export function GlobalAdjustmentControl({
             className={cn(
               "w-12 h-8 rounded text-sm font-bold transition-colors cursor-pointer",
               !globalAdjustment.isPercentage
-                ? "bg-slate-900 text-white shadow-xs"
+                ? "bg-brand-700 text-white shadow-xs"
                 : "text-slate-500 hover:text-slate-900"
             )}
           >

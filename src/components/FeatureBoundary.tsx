@@ -1,17 +1,7 @@
 import { Component, Suspense, useLayoutEffect, type ReactNode } from 'react';
-import { Loader2 } from 'lucide-react';
 
 export function FeatureLoading() {
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="min-h-48 rounded-xl bg-white border border-slate-200 p-8 flex flex-col items-center justify-center gap-3 text-slate-500 shadow-sm"
-    >
-      <Loader2 size={24} className="animate-spin text-slate-400" />
-      <span className="text-xs font-medium">Đang tải dữ liệu...</span>
-    </div>
-  );
+  return null;
 }
 
 function ReadyContent({ children, onReady }: { children: ReactNode; onReady?: () => void }) {
@@ -40,7 +30,7 @@ export class FeatureBoundary extends Component<
           </p>
           <button
             type="button"
-            className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition-colors shadow-sm cursor-pointer"
+            className="rounded-lg bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-800 transition-colors shadow-sm cursor-pointer"
             onClick={() => window.location.reload()}
           >
             Tải lại trang

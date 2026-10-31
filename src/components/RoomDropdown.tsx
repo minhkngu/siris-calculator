@@ -43,7 +43,7 @@ export function RoomDropdown({
         aria-expanded={showDropdown}
         className={cn(
           "w-full h-12 px-3 bg-slate-50/80 hover:bg-white border border-slate-200 hover:border-slate-300 rounded-lg flex items-center justify-between text-left transition-colors cursor-pointer group",
-          showDropdown && "bg-white border-slate-900 ring-1 ring-slate-900"
+          showDropdown && "bg-white border-brand-700 ring-1 ring-brand-700"
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
@@ -117,7 +117,7 @@ export function RoomDropdown({
                             {room.name}
                           </span>
                           {isSelected ? (
-                            <div className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-brand-700 text-white flex items-center justify-center shrink-0">
                               <Check size={12} strokeWidth={3} />
                             </div>
                           ) : null}
