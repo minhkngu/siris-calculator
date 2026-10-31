@@ -110,6 +110,8 @@ export default function App() {
         setAccommodations(hydrated);
         setSelectedAcc(current => hydrated.find(acc => acc.id === current?.id) || current);
         setSelectedRoom(current => hydrated.flatMap(acc => acc.rooms).find(room => room.id === current?.id) || current);
+      }).catch(err => {
+        setError(err instanceof Error ? err.message : 'Không thể tải ảnh Cloudinary.');
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu từ Supabase.');

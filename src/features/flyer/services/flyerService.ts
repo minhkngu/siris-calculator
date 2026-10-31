@@ -31,6 +31,7 @@ async function loadAccommodations(): Promise<Accommodation[]> {
 }
 
 export async function hydrateRoomImages(accommodations: Accommodation[]): Promise<Accommodation[]> {
+  if (!cloudName) throw new Error('Chưa cấu hình VITE_CLOUDINARY_CLOUD_NAME. Hãy thêm biến môi trường và build lại ứng dụng.');
   return Promise.all(accommodations.map(async acc => ({
     ...acc,
     rooms: await Promise.all(acc.rooms.map(async room => ({ ...room, imageUrls: await cloudinaryImages(room.cloudinaryTag) }))),
