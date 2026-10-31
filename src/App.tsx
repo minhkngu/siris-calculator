@@ -123,8 +123,8 @@ export default function App() {
   const [roomReady, setRoomReady] = useState(false);
   const [itemsReady, setItemsReady] = useState(false);
   const requests = useRef<Partial<Record<'room' | 'items' | 'flyer', Promise<void>>>>({});
-  const [activeTab, setActiveTab] = useState<'room' | 'items' | 'flyer'>(() => savedSession?.activeTab === 'items' ? 'items' : 'room');
-  const [flyerVisited, setFlyerVisited] = useState(false);
+  const [activeTab, setActiveTab] = useState<'room' | 'items' | 'flyer'>(() => savedSession?.activeTab === 'flyer' ? 'flyer' : savedSession?.activeTab === 'items' ? 'items' : 'room');
+  const [flyerVisited, setFlyerVisited] = useState(savedSession?.activeTab === 'flyer');
   const [roomMode, setRoomMode] = useState<'single' | 'multi'>(() => savedSession?.roomMode === 'multi' ? 'multi' : 'single');
 
   const [branches, setBranches] = useState<Branch[]>([]);

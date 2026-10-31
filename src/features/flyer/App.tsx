@@ -33,14 +33,19 @@ function FlyerMenu({ label, value, options, onSelect }: { label: string; value: 
   </div>;
 }
 
+function readFlyerView(): { branchId?: string; roomId?: string; scale?: number; variant?: 'full' | 'monthly' } {
+  try { return JSON.parse(sessionStorage.getItem('siris-flyer-view') || '{}'); } catch { return {}; }
+}
+
 export default function App() {
+  const [savedView] = useState(readFlyerView);
   const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
   const [selectedAcc, setSelectedAcc] = useState<Accommodation | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [imagesReady, setImagesReady] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [previewScale, setPreviewScale] = useState(0.75);
-  const [flyerVariant, setFlyerVariant] = useState<'full' | 'monthly'>('full');
+  const [previewScale, setPreviewScale] = useState(savedView.scale && savedView.scale >= 0.2 && savedView.scale <= 1 ? savedView.scale : 0.75);
+  const [flyerVariant, setFlyerVariant] = useState<'full' | 'monthly'>(savedView.variant === 'monthly' ? 'monthly' : 'full');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pendingScrollRestore = useRef<number | null>(null);
@@ -83,6 +88,11 @@ export default function App() {
     });
   }, [isLoading]);
 
+  useEffect(() => {
+    if (!selectedAcc || !selectedRoom) return;
+    try { sessionStorage.setItem('siris-flyer-view', JSON.stringify({ branchId: selectedAcc.id, roomId: selectedRoom.id, scale: previewScale, variant: flyerVariant })); } catch { /* Storage may be unavailable. */ }
+  }, [selectedAcc, selectedRoom, previewScale, flyerVariant]);
+
   const loadData = async (refresh = false) => {
     setIsLoading(true);
     setImagesReady(false);
@@ -100,9 +110,9 @@ export default function App() {
       }));
 
       setAccommodations(sortedData);
-      const nextAcc = sortedData.find(acc => acc.id === selectedAcc?.id) || sortedData[0] || null;
+      const nextAcc = sortedData.find(acc => acc.id === (selectedAcc?.id || savedView.branchId)) || sortedData[0] || null;
       setSelectedAcc(nextAcc);
-      setSelectedRoom(nextAcc?.rooms.find(room => room.id === selectedRoom?.id) || nextAcc?.rooms[0] || null);
+      setSelectedRoom(nextAcc?.rooms.find(room => room.id === (selectedRoom?.id || savedView.roomId)) || nextAcc?.rooms[0] || null);
 
       // Show controls immediately; image manifests resolve independently of the data request.
       void hydrateRoomImages(sortedData).then(hydrated => {
