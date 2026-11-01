@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { memo, useMemo, useState } from 'react';
 import { DateAdjustment } from '../types';
 import { AlertCircle, ChevronDown, Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -7,7 +7,7 @@ interface SurchargeBannerProps {
   adjustments: DateAdjustment[];
 }
 
-export const SurchargeBanner: React.FC<SurchargeBannerProps> = ({ adjustments }) => {
+const SurchargeBannerBase: React.FC<SurchargeBannerProps> = ({ adjustments }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const today = useMemo(() => {
@@ -111,3 +111,5 @@ export const SurchargeBanner: React.FC<SurchargeBannerProps> = ({ adjustments })
     </div>
   );
 };
+
+export const SurchargeBanner = memo(SurchargeBannerBase);

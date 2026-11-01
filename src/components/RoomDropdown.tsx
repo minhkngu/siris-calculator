@@ -3,6 +3,7 @@ import { AnimatePresence } from 'motion/react';
 import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
 import { RoomType } from './types';
+import { memo } from 'react';
 
 interface RoomDropdownProps {
   roomTypes: RoomType[];
@@ -13,7 +14,7 @@ interface RoomDropdownProps {
   formatCurrency: (amount: number) => string;
 }
 
-export function RoomDropdown({
+function RoomDropdownBase({
   roomTypes,
   selectedRoomId,
   showDropdown,
@@ -137,3 +138,5 @@ export function RoomDropdown({
     </div>
   );
 }
+
+export const RoomDropdown = memo(RoomDropdownBase);

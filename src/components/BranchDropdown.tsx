@@ -3,6 +3,7 @@ import { AnimatePresence } from 'motion/react';
 import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
 import { Branch } from './types';
+import { memo } from 'react';
 
 interface BranchDropdownProps {
   branches: Branch[];
@@ -12,7 +13,7 @@ interface BranchDropdownProps {
   onSelect: (branchId: string) => void;
 }
 
-export function BranchDropdown({
+function BranchDropdownBase({
   branches,
   selectedBranchId,
   showDropdown,
@@ -126,3 +127,5 @@ export function BranchDropdown({
     </div>
   );
 }
+
+export const BranchDropdown = memo(BranchDropdownBase);

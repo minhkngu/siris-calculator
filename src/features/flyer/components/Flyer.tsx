@@ -72,6 +72,9 @@ export const Flyer: React.FC<FlyerProps> = ({ accommodation, room, id, variant =
   const renderImageGrid = () => {
     const images = room.imageUrls.slice(0, 6);
     const count = images.length;
+    // All photos are served at w_1600; declaring the ratio avoids layout shift.
+    const width = 1600;
+    const height = 1067;
 
     if (count === 0) {
       return (
@@ -87,17 +90,26 @@ export const Flyer: React.FC<FlyerProps> = ({ accommodation, room, id, variant =
         <div className="h-[520px] bg-neutral-200 relative overflow-hidden">
           <img
             src={images[0]}
+            width={width}
+            height={height}
+            aria-hidden="true"
             className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110"
             crossOrigin="anonymous"
             referrerPolicy="no-referrer"
             loading="lazy"
+            decoding="async"
           />
           <img
             src={images[0]}
+            width={width}
+            height={height}
+            alt={room.name}
             className="relative w-full h-full object-cover"
             crossOrigin="anonymous"
             referrerPolicy="no-referrer"
-            loading="lazy"
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
           />
         </div>
       );
@@ -111,10 +123,15 @@ export const Flyer: React.FC<FlyerProps> = ({ accommodation, room, id, variant =
             <div key={i} className="overflow-hidden">
               <img
                 src={url}
+                width={width}
+                height={height}
+                alt={`${room.name} ${i + 1}`}
                 className="w-full h-full object-cover"
                 crossOrigin="anonymous"
                 referrerPolicy="no-referrer"
-                loading="lazy"
+                loading={i === 0 ? 'eager' : 'lazy'}
+                fetchPriority={i === 0 ? 'high' : undefined}
+                decoding="async"
               />
             </div>
           ))}
@@ -129,10 +146,15 @@ export const Flyer: React.FC<FlyerProps> = ({ accommodation, room, id, variant =
           <div className="col-span-2 overflow-hidden">
             <img
               src={images[0]}
+              width={width}
+              height={height}
+              alt={`${room.name} 1`}
               className="w-full h-full object-cover"
               crossOrigin="anonymous"
               referrerPolicy="no-referrer"
-              loading="lazy"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
             />
           </div>
           <div className="grid grid-rows-2 gap-0.5">
@@ -140,10 +162,14 @@ export const Flyer: React.FC<FlyerProps> = ({ accommodation, room, id, variant =
               <div key={i} className="overflow-hidden">
                 <img
                   src={url}
+                  width={width}
+                  height={height}
+                  alt={`${room.name} ${i + 2}`}
                   className="w-full h-full object-cover"
                   crossOrigin="anonymous"
                   referrerPolicy="no-referrer"
                   loading="lazy"
+                  decoding="async"
                 />
               </div>
             ))}
@@ -160,10 +186,15 @@ export const Flyer: React.FC<FlyerProps> = ({ accommodation, room, id, variant =
             <div key={i} className="overflow-hidden">
               <img
                 src={url}
+                width={width}
+                height={height}
+                alt={`${room.name} ${i + 1}`}
                 className="w-full h-full object-cover"
                 crossOrigin="anonymous"
                 referrerPolicy="no-referrer"
-                loading="lazy"
+                loading={i === 0 ? 'eager' : 'lazy'}
+                fetchPriority={i === 0 ? 'high' : undefined}
+                decoding="async"
               />
             </div>
           ))}
@@ -177,12 +208,33 @@ export const Flyer: React.FC<FlyerProps> = ({ accommodation, room, id, variant =
         <div className="grid grid-cols-6 grid-rows-2 gap-0.5 h-[520px] bg-neutral-200">
           {images.slice(0, 2).map((url, i) => (
             <div key={i} className="col-span-3 row-span-1 overflow-hidden">
-              <img src={url} className="w-full h-full object-cover" crossOrigin="anonymous" referrerPolicy="no-referrer" loading="lazy" />
+              <img
+                src={url}
+                width={width}
+                height={height}
+                alt={`${room.name} ${i + 1}`}
+                className="w-full h-full object-cover"
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
+                loading={i === 0 ? 'eager' : 'lazy'}
+                fetchPriority={i === 0 ? 'high' : undefined}
+                decoding="async"
+              />
             </div>
           ))}
           {images.slice(2).map((url, i) => (
             <div key={i + 2} className="col-span-2 row-span-1 overflow-hidden">
-              <img src={url} className="w-full h-full object-cover" crossOrigin="anonymous" referrerPolicy="no-referrer" loading="lazy" />
+              <img
+                src={url}
+                width={width}
+                height={height}
+                alt={`${room.name} ${i + 3}`}
+                className="w-full h-full object-cover"
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
+                loading="lazy"
+                decoding="async"
+              />
             </div>
           ))}
         </div>
@@ -196,11 +248,15 @@ export const Flyer: React.FC<FlyerProps> = ({ accommodation, room, id, variant =
           <div key={idx} className="overflow-hidden">
             <img
               src={url}
+              width={width}
+              height={height}
               alt={`${room.name} ${idx + 1}`}
               className="w-full h-full object-cover"
               crossOrigin="anonymous"
               referrerPolicy="no-referrer"
-              loading="lazy"
+              loading={idx === 0 ? 'eager' : 'lazy'}
+              fetchPriority={idx === 0 ? 'high' : undefined}
+              decoding="async"
             />
           </div>
         ))}

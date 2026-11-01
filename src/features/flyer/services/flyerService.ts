@@ -22,8 +22,9 @@ async function cloudinaryImages(tag?: string): Promise<string[]> {
   return manifests.get(tag)!;
 }
 
-async function loadAccommodations(): Promise<Accommodation[]> {
-  const response = await fetch('/api/flyer-data', { cache: 'no-store' });
+async function loadAccommodations(refresh = false): Promise<Accommodation[]> {
+  const endpoint = refresh ? `/api/flyer-data?t=${Date.now()}` : '/api/flyer-data';
+  const response = await fetch(endpoint, { cache: refresh ? 'no-store' : 'default' });
   const data = await response.json().catch(() => null);
   if (!response.ok) throw new Error(data?.error || 'Không thể kết nối với API Supabase.');
   if (!Array.isArray(data?.accommodations)) throw new Error('API Supabase trả dữ liệu không hợp lệ.');
@@ -42,7 +43,7 @@ let accommodationsRequest: Promise<Accommodation[]> | undefined;
 
 export function fetchAccommodations(refresh = false): Promise<Accommodation[]> {
   if (refresh || !accommodationsRequest) {
-    const request = loadAccommodations();
+    const request = loadAccommodations(refresh);
     accommodationsRequest = request;
     void request.catch(() => {
       if (accommodationsRequest === request) accommodationsRequest = undefined;

@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { Tag, Check, Copy, CheckCheck, Hotel, Calendar } from 'lucide-react';
+import { memo, useRef, useState } from 'react';
+import { Check, Copy, CheckCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { GlobalAdjustment, MultiRoomTotalSummary } from './types';
 import { format, parseISO } from 'date-fns';
 import { GoogleReviewsOption } from './GoogleReviewsOption';
 import { getEarlyLateDetails } from '../lib/earlyLateDetails';
+import { copyTextToClipboard } from '../lib/clipboard';
 
 interface MultiRoomSummaryProps {
   summary: MultiRoomTotalSummary;
@@ -16,7 +17,7 @@ interface MultiRoomSummaryProps {
   formatCurrency: (amount: number) => string;
 }
 
-export function MultiRoomSummary({
+function MultiRoomSummaryBase({
   summary,
   globalAdjustment,
   onToggleGoogleReviews,
@@ -28,6 +29,9 @@ export function MultiRoomSummary({
   const [copied, setCopied] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [copySummaryError, setCopySummaryError] = useState('');
+  const [copyQuoteError, setCopyQuoteError] = useState('');
+  const [manualQuote, setManualQuote] = useState('');
+  const summaryRef = useRef<HTMLTextAreaElement>(null);
 
   const includedItems = summary.items.filter((it) => it.item.isIncluded !== false);
   const earlyLateDetails = summary.items.flatMap((item, index) =>
@@ -47,8 +51,9 @@ export function MultiRoomSummary({
     const checkInStr = item.item.checkIn ? format(parseISO(item.item.checkIn), 'dd/MM/yyyy') : '';
     const checkOutStr = item.item.checkOut ? format(parseISO(item.item.checkOut), 'dd/MM/yyyy') : '';
     const total = item.calculation?.finalTotal || 0;
+    const nights = item.calculation?.nights.length || 0;
 
-    return `${branchName} | ${roomName} | Check-in: ${checkInStr} | Check-out: ${checkOutStr} | Tổng giá phòng: ${formatCurrency(total)}`;
+    return `${branchName} | ${roomName} | Check-in: ${checkInStr} | Check-out: ${checkOutStr} | ${nights} đêm | Tổng giá phòng: ${formatCurrency(total)}`;
   });
 
   const roomSummary =
@@ -62,16 +67,18 @@ export function MultiRoomSummary({
 
   const handleCopySummary = async () => {
     setCopySummaryError('');
-    try {
-      await navigator.clipboard.writeText(roomSummary);
+    if (await copyTextToClipboard(roomSummary)) {
       setCopiedSummary(true);
       setTimeout(() => setCopiedSummary(false), 2000);
-    } catch {
-      setCopySummaryError('Không thể sao chép tự động. Bạn có thể chọn nội dung bên dưới để sao chép.');
+      return;
     }
+    setCopySummaryError('Không thể sao chép tự động. Nội dung bên dưới đã được chọn để bạn sao chép.');
+    summaryRef.current?.focus();
+    summaryRef.current?.select();
   };
 
-  const handleCopyQuote = () => {
+  const handleCopyQuote = async () => {
+    setCopyQuoteError('');
     let text = `BÁO GIÁ ĐẶT PHÒNG SIRIS RESIDENCES\n`;
     text += `Số lượng: ${summary.totalRooms} phòng (${summary.totalNights} đêm tổng cộng)\n\n`;
 
@@ -81,8 +88,9 @@ export function MultiRoomSummary({
       const checkInStr = item.item.checkIn ? format(parseISO(item.item.checkIn), 'dd/MM/yyyy') : '';
       const checkOutStr = item.item.checkOut ? format(parseISO(item.item.checkOut), 'dd/MM/yyyy') : '';
       const total = item.calculation?.finalTotal || 0;
+      const nights = item.calculation?.nights.length || 0;
 
-      text += `${branchName} | ${roomName} | Check-in: ${checkInStr} | Check-out: ${checkOutStr} | Tổng giá phòng: ${formatCurrency(total)}\n\n`;
+      text += `${branchName} | ${roomName} | Check-in: ${checkInStr} | Check-out: ${checkOutStr} | ${nights} đêm | Tổng giá phòng: ${formatCurrency(total)}\n\n`;
     });
 
     text += `TỔNG CỘNG:\n`;
@@ -100,9 +108,15 @@ export function MultiRoomSummary({
     }
     text += `TỔNG THANH TOÁN: ${formatCurrency(summary.finalTotal)}`;
 
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (await copyTextToClipboard(text)) {
+      setCopied(true);
+      setManualQuote('');
+      setTimeout(() => setCopied(false), 2000);
+      return;
+    }
+    setCopied(false);
+    setManualQuote(text);
+    setCopyQuoteError('Không thể sao chép tự động. Nội dung bên dưới đã được chọn để bạn sao chép.');
   };
 
   return (
@@ -139,6 +153,7 @@ export function MultiRoomSummary({
           </div>
           <textarea
             id="multi-room-summary"
+            ref={summaryRef}
             readOnly
             value={roomSummary}
             rows={Math.min(Math.max(includedItems.length + 1, 2), 5)}
@@ -274,6 +289,27 @@ export function MultiRoomSummary({
           </>
         )}
       </button>
+
+      {copyQuoteError && (
+        <p role="alert" className="text-xs text-rose-600 font-medium">{copyQuoteError}</p>
+      )}
+      {manualQuote && (
+        <textarea
+          readOnly
+          value={manualQuote}
+          rows={Math.min(Math.max(manualQuote.split('\n').length, 4), 12)}
+          ref={(node) => {
+            if (node) {
+              node.focus();
+              node.select();
+            }
+          }}
+          onFocus={(event) => event.currentTarget.select()}
+          className="w-full resize-y rounded-md border border-slate-200 bg-slate-50 p-2 text-xs leading-relaxed text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-700"
+        />
+      )}
     </section>
   );
 }
+
+export const MultiRoomSummary = memo(MultiRoomSummaryBase);

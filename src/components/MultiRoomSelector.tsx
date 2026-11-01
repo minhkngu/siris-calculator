@@ -1,5 +1,5 @@
-import { lazy, useState } from 'react';
-import { Plus, Trash2, Copy, Building, Hotel, Calendar, Clock, ChevronDown, ChevronUp, Layers, Check } from 'lucide-react';
+import { memo, lazy, useState } from 'react';
+import { Plus, Trash2, Copy, Calendar, Clock, ChevronDown, Layers, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Branch, RoomType, SelectedRoomItem, EarlyCheckinLateCheckoutType, EARLY_LATE_OPTIONS, MultiRoomTotalSummary } from './types';
 import { cn } from '../lib/utils';
@@ -21,7 +21,7 @@ interface MultiRoomSelectorProps {
   formatCurrency: (amount: number) => string;
 }
 
-export function MultiRoomSelector({
+function MultiRoomSelectorBase({
   rooms,
   branches,
   roomTypes,
@@ -565,3 +565,5 @@ export function MultiRoomSelector({
     </div>
   );
 }
+
+export const MultiRoomSelector = memo(MultiRoomSelectorBase);

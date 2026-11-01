@@ -3,7 +3,73 @@ import type { RoomType, DateAdjustment, GlobalAdjustment, StayDiscount, EarlyChe
 
 export const EMPTY_EARLY_LATE_OPTIONS: ReadonlySet<EarlyCheckinLateCheckoutType> = new Set();
 
+const ROOM_CACHE_LIMIT = 300;
+
+type RoomCacheBucket = Map<string, CalculationResult | null>;
+
+// The adjustment/discount arrays are stable state references, so they make a
+// cheap two-level cache key without serialising their contents on every render.
+const roomCalculationCache = new WeakMap<
+    ReadonlyArray<DateAdjustment>,
+    WeakMap<ReadonlyArray<StayDiscount>, RoomCacheBucket>
+>();
+
+function roomCacheBucket(dateAdjustments: DateAdjustment[], stayDiscounts: StayDiscount[]): RoomCacheBucket {
+    let byDiscounts = roomCalculationCache.get(dateAdjustments);
+    if (!byDiscounts) {
+        byDiscounts = new WeakMap();
+        roomCalculationCache.set(dateAdjustments, byDiscounts);
+    }
+    let bucket = byDiscounts.get(stayDiscounts);
+    if (!bucket) {
+        bucket = new Map();
+        byDiscounts.set(stayDiscounts, bucket);
+    }
+    return bucket;
+}
+
+function roomCacheKey(
+    room: RoomType,
+    checkIn: string,
+    checkOut: string,
+    globalAdjustment: GlobalAdjustment,
+    includeVAT: boolean,
+    vatRate: number,
+    earlyLateOptions: ReadonlySet<EarlyCheckinLateCheckoutType>,
+): string {
+    const options = earlyLateOptions.size ? [...earlyLateOptions].sort().join('+') : '';
+    return [
+        room.id, room.weekdayPrice, room.weekendPrice, checkIn, checkOut,
+        globalAdjustment.type, globalAdjustment.amount, globalAdjustment.isPercentage ? 1 : 0,
+        globalAdjustment.googleReviews ? 1 : 0, includeVAT ? 1 : 0, vatRate, options,
+    ].join('|');
+}
+
 export function calculateForRoomLogic(
+    room: RoomType,
+    checkIn: string,
+    checkOut: string,
+    dateAdjustments: DateAdjustment[],
+    globalAdjustment: GlobalAdjustment,
+    stayDiscounts: StayDiscount[],
+    includeVAT: boolean,
+    vatRate: number,
+    earlyLateOptions: ReadonlySet<EarlyCheckinLateCheckoutType> = EMPTY_EARLY_LATE_OPTIONS
+): CalculationResult | null {
+    const bucket = roomCacheBucket(dateAdjustments, stayDiscounts);
+    const key = roomCacheKey(room, checkIn, checkOut, globalAdjustment, includeVAT, vatRate, earlyLateOptions);
+    if (bucket.has(key)) return bucket.get(key) ?? null;
+
+    const result = computeRoomCalculation(
+        room, checkIn, checkOut, dateAdjustments, globalAdjustment,
+        stayDiscounts, includeVAT, vatRate, earlyLateOptions,
+    );
+    if (bucket.size >= ROOM_CACHE_LIMIT) bucket.clear();
+    bucket.set(key, result);
+    return result;
+}
+
+function computeRoomCalculation(
     room: RoomType,
     checkIn: string,
     checkOut: string,

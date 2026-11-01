@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Package, Check, Minus, Plus, Search } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Item } from './types';
@@ -11,7 +11,7 @@ interface ItemCompensationProps {
   formatCurrency: (amount: number) => string;
 }
 
-export function ItemCompensation({
+function ItemCompensationBase({
   items,
   selectedQuantities,
   onChangeQuantity,
@@ -201,3 +201,5 @@ export function ItemCompensation({
     </section>
   );
 }
+
+export const ItemCompensation = memo(ItemCompensationBase);

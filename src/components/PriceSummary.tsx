@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Calculator, ChevronDown } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
@@ -29,7 +29,7 @@ interface PriceSummaryProps {
   checkOut: string;
 }
 
-export function PriceSummary({
+function PriceSummaryBase({
   calculation,
   comparisonDifference,
   comparisonVatDifference,
@@ -274,3 +274,5 @@ export function PriceSummary({
     </section>
   );
 }
+
+export const PriceSummary = memo(PriceSummaryBase);

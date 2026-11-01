@@ -12,6 +12,7 @@ build/
 
 # Misc
 .DS_Store
+.reasonix/
 *.pem
 
 # Debug

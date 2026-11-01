@@ -19,6 +19,21 @@ export function useCalculateForRoom(
     }, [room, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, earlyLateOptions]);
 }
 
+const EMPTY_COMPARISONS: import('./types').ComparisonItem[] = [];
+const EMPTY_MULTI_SUMMARY: import('./types').MultiRoomTotalSummary = {
+    items: [],
+    totalRooms: 0,
+    totalNights: 0,
+    totalBase: 0,
+    totalStayDiscounts: 0,
+    totalEarlyLate: 0,
+    globalAdjustmentValue: 0,
+    googleReviewsDiscount: 0,
+    vatValue: 0,
+    finalTotal: 0,
+    deposit: 0,
+};
+
 export function useComparisons(
     roomTypes: RoomType[],
     branches: { id: string; name: string; address?: string }[],
@@ -33,10 +48,11 @@ export function useComparisons(
     stayDiscounts: StayDiscount[],
     includeVAT: boolean,
     vatRate: number,
-    earlyLateOptions: ReadonlySet<EarlyCheckinLateCheckoutType> = EMPTY_EARLY_LATE_OPTIONS
+    earlyLateOptions: ReadonlySet<EarlyCheckinLateCheckoutType> = EMPTY_EARLY_LATE_OPTIONS,
+    enabled = true,
 ) {
     return useMemo(() => {
-        if (!selectedRoom || !calculation) return [];
+        if (!enabled || !selectedRoom || !calculation) return EMPTY_COMPARISONS;
 
         const branchIds = new Set(compareBranchIds);
         const roomIds = new Set(compareRoomIds);
@@ -57,7 +73,7 @@ export function useComparisons(
                 };
             })
             .sort((a, b) => (a.calculation?.finalTotal || 0) - (b.calculation?.finalTotal || 0));
-    }, [selectedRoom, calculation, roomTypes, branches, compareBranchIds, compareRoomIds, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, earlyLateOptions]);
+    }, [enabled, selectedRoom, calculation, roomTypes, branches, compareBranchIds, compareRoomIds, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, earlyLateOptions]);
 }
 
 export function useMultiRoomCalculator(
@@ -68,9 +84,11 @@ export function useMultiRoomCalculator(
     globalAdjustment: GlobalAdjustment,
     stayDiscounts: StayDiscount[],
     includeVAT: boolean,
-    vatRate: number
+    vatRate: number,
+    enabled = true,
 ) {
     return useMemo(() => {
+        if (!enabled) return EMPTY_MULTI_SUMMARY;
         return calculateMultiRoomLogic(
             selectedRooms,
             roomTypes,
@@ -81,5 +99,5 @@ export function useMultiRoomCalculator(
             includeVAT,
             vatRate
         );
-    }, [selectedRooms, roomTypes, branches, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate]);
+    }, [enabled, selectedRooms, roomTypes, branches, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate]);
 }

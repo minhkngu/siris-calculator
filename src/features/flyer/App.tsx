@@ -33,6 +33,60 @@ function FlyerMenu({ label, value, options, onSelect }: { label: string; value: 
   </div>;
 }
 
+const IMAGE_CACHE_LIMIT = 30;
+const base64ImageCache = new Map<string, Promise<string>>();
+
+function loadImageAsBase64(url: string): Promise<string> {
+  const cached = base64ImageCache.get(url);
+  if (cached) return cached;
+
+  const request = (async () => {
+    const resp = await fetch(url, { mode: 'cors' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const blob = await resp.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error ?? new Error('Không đọc được ảnh.'));
+      reader.readAsDataURL(blob);
+    });
+  })();
+
+  base64ImageCache.set(url, request);
+  void request.catch(() => {
+    if (base64ImageCache.get(url) === request) base64ImageCache.delete(url);
+  });
+  if (base64ImageCache.size > IMAGE_CACHE_LIMIT) {
+    for (const key of base64ImageCache.keys()) {
+      if (key === url) continue;
+      base64ImageCache.delete(key);
+      if (base64ImageCache.size <= IMAGE_CACHE_LIMIT) break;
+    }
+  }
+  return request;
+}
+
+function clearImageBase64Cache(): void {
+  base64ImageCache.clear();
+}
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const run = async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await worker(items[index]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
+  return results;
+}
+
 function readFlyerView(): { branchId?: string; roomId?: string; scale?: number; variant?: 'full' | 'monthly' } {
   try { return JSON.parse(sessionStorage.getItem('siris-flyer-view') || '{}'); } catch { return {}; }
 }
@@ -94,6 +148,7 @@ export default function App() {
   }, [selectedAcc, selectedRoom, previewScale, flyerVariant]);
 
   const loadData = async (refresh = false) => {
+    if (refresh) clearImageBase64Cache();
     setIsLoading(true);
     setImagesReady(false);
     setError(null);
@@ -142,21 +197,13 @@ export default function App() {
     variant: 'full' | 'monthly' = flyerVariant,
   ): Promise<string | null> => {
     return new Promise(async (resolve) => {
-      // 1. Fetch images as Blob -> DataURL (Base64) in parallel to bypass CORS/Network bottleneck during capture
+      // 1. Fetch images as Blob -> DataURL (Base64) in parallel to bypass CORS/Network bottleneck during capture.
+      // The module-level cache keeps the second download from refetching the same photos.
       const base64ImagesMap = new Map<string, string>();
       await Promise.all(
         room.imageUrls.map(async (url) => {
           try {
-            const resp = await fetch(url, { mode: 'cors' });
-            if (resp.ok) {
-              const blob = await resp.blob();
-              const base64 = await new Promise<string>((res) => {
-                const reader = new FileReader();
-                reader.onloadend = () => res(reader.result as string);
-                reader.readAsDataURL(blob);
-              });
-              base64ImagesMap.set(url, base64);
-            }
+            base64ImagesMap.set(url, await loadImageAsBase64(url));
           } catch (e) {
             console.warn('Failed to pre-fetch image to base64:', url, e);
           }
@@ -217,7 +264,7 @@ export default function App() {
 
         const dataUrl = await toPng(mountPoint, {
           quality: 0.95,
-          pixelRatio: 3,
+          pixelRatio: 2,
           skipFonts: true,
         });
 
@@ -269,18 +316,25 @@ export default function App() {
     try {
       const zip = new JSZip();
 
-      for (const room of acc.rooms) {
-        const dataUrl = await captureFlyerToPng(acc, room);
-        if (dataUrl) {
-          const blob = dataURLToBlob(dataUrl);
-          const variantSuffix = flyerVariant === 'monthly' ? '-gia-thang' : '';
-          zip.folder(acc.name)?.file(`${room.name}${variantSuffix}.png`, blob);
+      // Two captures at a time keep memory bounded with up to 10 rooms.
+      const captured = await mapWithConcurrency(acc.rooms, 2, async (room) => {
+        try {
+          return { room, dataUrl: await captureFlyerToPng(acc, room) };
+        } catch (err) {
+          console.error('Capture failed for', room.name, err);
+          return { room, dataUrl: null };
         }
+      });
+
+      const variantSuffix = flyerVariant === 'monthly' ? '-gia-thang' : '';
+      for (const { room, dataUrl } of captured) {
+        if (!dataUrl) continue;
+        zip.folder(acc.name)?.file(`${room.name}${variantSuffix}.png`, dataURLToBlob(dataUrl));
       }
 
       const content = await zip.generateAsync({ type: 'blob' });
-      const variantSuffix = flyerVariant === 'monthly' ? '_gia-thang' : '';
-      saveAs(content, `${acc.name}_flyers${variantSuffix}.zip`);
+      const archiveSuffix = flyerVariant === 'monthly' ? '_gia-thang' : '';
+      saveAs(content, `${acc.name}_flyers${archiveSuffix}.zip`);
     } catch (err) {
       console.error('Download acc failed', err);
       setError('Download failed. Please try again.');

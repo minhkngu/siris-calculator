@@ -1,32 +1,21 @@
 import { lazy, useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { format, addDays, parseISO, getDay, isValid } from 'date-fns';
-import { SurchargeBanner } from './components/SurchargeBanner';
-import { BranchDropdown } from './components/BranchDropdown';
-import { RoomDropdown } from './components/RoomDropdown';
-import { DateRangePicker } from './components/DateRangePicker';
-import { GlobalAdjustmentControl } from './components/GlobalAdjustmentControl';
-import { PriceSummary } from './components/PriceSummary';
-import { BookingSummary } from './components/BookingSummary';
-import { ComparisonPanel } from './components/ComparisonPanel';
 import { FetchErrorView } from './components/FetchErrorView';
 import { useCalculateForRoom, useComparisons, useMultiRoomCalculator } from './components/useHotelCalculator';
 import { Branch, RoomType, DateAdjustment, GlobalAdjustment, StayDiscount, EarlyCheckinLateCheckoutType, Item, SelectedRoomItem } from './components/types';
 import { Hotel, Layers } from 'lucide-react';
 import { FeatureBoundary, FeatureLoading } from './components/FeatureBoundary';
 import { loadHotelData } from './lib/hotelData';
+import { RoomView } from './features/room/RoomView';
+import { MultiRoomView, preloadMultiRoomView } from './features/room/MultiRoomView';
+import { ItemsView, preloadItemsView } from './features/items/ItemsView';
+import { createSessionWriter, readSessionScroll, readSessionState, writeSessionScroll } from './lib/session';
 
-const loadItems = () => import('./components/ItemCompensation').then(module => ({ default: module.ItemCompensation }));
-const loadMultiSelector = () => import('./components/MultiRoomSelector').then(module => ({ default: module.MultiRoomSelector }));
-const loadMultiSummary = () => import('./components/MultiRoomSummary').then(module => ({ default: module.MultiRoomSummary }));
-const ItemCompensation = lazy(loadItems);
 const loadFlyer = () => import('./features/flyer/App');
 const FlyerStudio = lazy(loadFlyer);
-const MultiRoomSelector = lazy(loadMultiSelector);
-const MultiRoomSummary = lazy(loadMultiSummary);
 
 const currencyFormatter = new Intl.NumberFormat('vi-VN');
 const formatCurrency = (amount: number) => `${currencyFormatter.format(amount)} VND`;
-const SESSION_STATE_KEY = 'hotel-price-calculator:session:v1';
 const EARLY_LATE_OPTION_TYPES: EarlyCheckinLateCheckoutType[] = [
   'checkin_2200', 'early_0800', 'early_1230', 'early_1300', 'late_1300', 'late_1800',
 ];
@@ -48,18 +37,8 @@ interface PersistedSession {
   selectedEarlyLateOptions: EarlyCheckinLateCheckoutType[];
   multiRooms: Array<Omit<SelectedRoomItem, 'earlyLateOptions'> & { earlyLateOptions: EarlyCheckinLateCheckoutType[] }>;
   selectedQuantities: Record<string, number>;
-  scrollY: number;
-}
-
-function readPersistedSession(): PersistedSession | null {
-  try {
-    const saved = sessionStorage.getItem(SESSION_STATE_KEY);
-    if (!saved) return null;
-    const value = JSON.parse(saved) as PersistedSession;
-    return value?.version === 1 ? value : null;
-  } catch {
-    return null;
-  }
+  /** Legacy field kept so sessions written before the scroll split still restore. */
+  scrollY?: number;
 }
 
 function isValidStayDates(checkIn: unknown, checkOut: unknown): checkIn is string {
@@ -118,8 +97,12 @@ function restoreMultiRooms(
 }
 
 export default function App() {
-  const [savedSession] = useState(readPersistedSession);
-  const restoreScrollY = useRef<number | null>(savedSession?.scrollY ?? 0);
+  const [savedSession] = useState<PersistedSession | null>(() => {
+    const value = readSessionState<PersistedSession>();
+    return value?.version === 1 ? value : null;
+  });
+  const [sessionWriter] = useState(() => createSessionWriter<PersistedSession>(500));
+  const restoreScrollY = useRef<number | null>(readSessionScroll() ?? savedSession?.scrollY ?? 0);
   const [roomReady, setRoomReady] = useState(false);
   const [itemsReady, setItemsReady] = useState(false);
   const requests = useRef<Partial<Record<'room' | 'items' | 'flyer', Promise<void>>>>({});
@@ -199,44 +182,32 @@ export default function App() {
         compareRoomIds: savedSession.compareRoomIds, selectedEarlyLateOptions: savedSession.selectedEarlyLateOptions,
         multiRooms: savedSession.multiRooms,
       } : {}),
-      scrollY: restoreScrollY.current ?? window.scrollY,
     };
-    try {
-      sessionStorage.setItem(SESSION_STATE_KEY, JSON.stringify(snapshot));
-    } catch {
-      // The app remains usable when browser storage is unavailable or full.
-    }
+    sessionWriter.schedule(snapshot);
   }, [
     roomReady, itemsReady, savedSession, activeTab, roomMode, selectedBranchId, selectedRoomId, checkIn, checkOut,
     globalAdjustment, includeVAT, vatRate, compareBranchIds, compareRoomIds, paidAmount,
-    selectedEarlyLateOptions, multiRooms, selectedQuantities,
+    selectedEarlyLateOptions, multiRooms, selectedQuantities, sessionWriter,
   ]);
 
   useEffect(() => {
     const previousRestoration = window.history.scrollRestoration;
     window.history.scrollRestoration = 'manual';
     let frame = 0;
+    let lastScrollY = window.scrollY;
     const saveScroll = () => {
       if (frame) return;
       frame = window.requestAnimationFrame(() => {
         frame = 0;
-        try {
-          const current = readPersistedSession();
-          if (current) {
-            sessionStorage.setItem(SESSION_STATE_KEY, JSON.stringify({ ...current, scrollY: window.scrollY }));
-          }
-        } catch {
-          // Ignore storage failures; native page navigation is unaffected.
-        }
+        const current = window.scrollY;
+        if (current === lastScrollY) return;
+        lastScrollY = current;
+        writeSessionScroll(current);
       });
     };
     const saveScrollImmediately = () => {
-      try {
-        const current = readPersistedSession();
-        if (current) sessionStorage.setItem(SESSION_STATE_KEY, JSON.stringify({ ...current, scrollY: window.scrollY }));
-      } catch {
-        // Ignore storage failures during page navigation.
-      }
+      lastScrollY = window.scrollY;
+      writeSessionScroll(lastScrollY);
     };
     window.addEventListener('scroll', saveScroll, { passive: true });
     window.addEventListener('pagehide', saveScrollImmediately);
@@ -247,6 +218,13 @@ export default function App() {
       if (frame) window.cancelAnimationFrame(frame);
     };
   }, []);
+
+  useEffect(() => {
+    // A debounced snapshot can still be pending when the tab is closed.
+    const flushSession = () => sessionWriter.flush();
+    window.addEventListener('pagehide', flushSession);
+    return () => window.removeEventListener('pagehide', flushSession);
+  }, [sessionWriter]);
 
   const restoreScroll = useCallback(() => {
     const target = restoreScrollY.current;
@@ -307,16 +285,16 @@ export default function App() {
     }
   }, [checkOut]);
 
-  const fetchData = useCallback((scope: 'room' | 'items'): Promise<void> => {
+  const fetchData = useCallback((scope: 'room' | 'items', forceRefresh = false): Promise<void> => {
     const pending = requests.current[scope];
-    if (pending) return pending;
+    if (pending && !forceRefresh) return pending;
     const setGroupLoading = scope === 'room' ? setRoomLoading : setItemsLoading;
     const setGroupError = scope === 'room' ? setRoomError : setItemsError;
     setGroupLoading(true);
     setGroupError(null);
     const request = (async () => {
       try {
-        const hotelData = await loadHotelData(scope);
+        const hotelData = await loadHotelData(scope, { forceRefresh });
         if (scope === 'room') {
           const { branches: bData, roomTypes: rData, stayDiscounts: dData, dateAdjustments: aData } = hotelData as {
             branches: Branch[]; roomTypes: RoomType[]; stayDiscounts: StayDiscount[]; dateAdjustments: DateAdjustment[];
@@ -379,7 +357,7 @@ export default function App() {
           }
           setRoomReady(true);
         } else {
-          const iDataMapped = hotelData.items as Item[];
+          const iDataMapped = (hotelData as { items: Item[] }).items;
           setItems(iDataMapped);
           const restore = savedSession;
           const currentItemIds = new Map(iDataMapped.map(item => [item.id, item.quantity]));
@@ -402,7 +380,9 @@ export default function App() {
       }
     })();
     requests.current[scope] = request;
-    void request.finally(() => { delete requests.current[scope]; });
+    void request.finally(() => {
+      if (requests.current[scope] === request) delete requests.current[scope];
+    });
     return request;
   }, [savedSession]);
 
@@ -412,11 +392,8 @@ export default function App() {
 
   useEffect(() => {
     // Fetch feature code alongside its data, with rendering errors handled by the boundary.
-    if (activeTab === 'items') void loadItems().catch(() => {});
-    else if (roomMode === 'multi') {
-      void loadMultiSelector().catch(() => {});
-      void loadMultiSummary().catch(() => {});
-    }
+    if (activeTab === 'items') void preloadItemsView().catch(() => {});
+    else if (roomMode === 'multi') void preloadMultiRoomView().catch(() => {});
   }, [activeTab, roomMode]);
 
   const filteredRoomTypes = useMemo(() =>
@@ -441,7 +418,7 @@ export default function App() {
   // Single room calculation
   const calculation = useCalculateForRoom(selectedRoom, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions);
 
-  const comparisons = useComparisons(roomTypes, branches, compareBranchIds, compareRoomIds, selectedRoom, calculation, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions);
+  const comparisons = useComparisons(roomTypes, branches, compareBranchIds, compareRoomIds, selectedRoom, calculation, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions, activeTab === 'room' && roomMode === 'single');
   const comparisonRoom = roomTypes.find(room => room.id === comparisonRoomId);
   const comparisonCalculation = useCalculateForRoom(comparisonRoom, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions);
   const comparisonDifference = comparisonRoom && comparisonRoom.id !== selectedRoomId && comparisonCalculation && calculation
@@ -452,7 +429,7 @@ export default function App() {
   useEffect(() => { setComparisonRoomId(null); }, [selectedBranchId, selectedRoomId]);
 
   // Multi-room calculation
-  const multiRoomSummary = useMultiRoomCalculator(multiRooms, roomTypes, branches, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate);
+  const multiRoomSummary = useMultiRoomCalculator(multiRooms, roomTypes, branches, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, activeTab === 'room' && roomMode === 'multi');
 
   // Multi-room handlers
   const handleAddMultiRoom = useCallback(() => {
@@ -546,6 +523,72 @@ export default function App() {
     });
   }, []);
 
+  const handleToggleBranchDropdown = useCallback(() => setShowBranchDropdown((prev) => !prev), []);
+  const handleSelectBranch = useCallback((branchId: string) => {
+    setSelectedBranchId(branchId);
+    const available = roomTypes.filter((room) => room.branchId === branchId);
+    setSelectedRoomId(available[0]?.id || '');
+  }, [roomTypes]);
+  const handleToggleRoomDropdown = useCallback(() => setShowRoomDropdown((prev) => !prev), []);
+  const handleToggleDatePicker = useCallback((type: 'checkIn' | 'checkOut') => {
+    setShowDatePicker((current) => (current === type ? null : type));
+  }, []);
+  const handleChangeDate = useCallback((type: 'checkIn' | 'checkOut', date: string) => {
+    if (type === 'checkIn') setCheckIn(date);
+    else setCheckOut(date);
+  }, []);
+  const handleCloseDatePicker = useCallback(() => setShowDatePicker(null), []);
+  const handleToggleGlobalAdjDropdown = useCallback(() => setShowGlobalAdjTypeDropdown((prev) => !prev), []);
+  const handleCloseGlobalAdjDropdown = useCallback(() => setShowGlobalAdjTypeDropdown(false), []);
+  const handleGlobalAdjTypeChange = useCallback((type: 'surcharge' | 'discount') => {
+    setGlobalAdjustment((prev) => ({ ...prev, type }));
+  }, []);
+  const handleGlobalAdjAmountChange = useCallback((amount: number) => {
+    setGlobalAdjustment((prev) => ({ ...prev, amount }));
+  }, []);
+  const handleToggleGlobalAdjPercentage = useCallback(() => {
+    setGlobalAdjustment((prev) => ({ ...prev, isPercentage: !prev.isPercentage }));
+  }, []);
+  const handleToggleGoogleReviews = useCallback((checked: boolean) => {
+    setGlobalAdjustment((prev) => ({ ...prev, googleReviews: checked }));
+  }, []);
+  const handleToggleNightlyDetails = useCallback(() => setShowNightlyDetails((prev) => !prev), []);
+  const handleToggleCompareFilter = useCallback(() => setShowCompareFilter((prev) => !prev), []);
+  const handleCloseCompareFilter = useCallback(() => setShowCompareFilter(false), []);
+  const handleToggleBranchFilter = useCallback((id: string) => {
+    setCompareBranchIds((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]));
+  }, []);
+  const handleToggleRoomFilter = useCallback((id: string) => {
+    setCompareRoomIds((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]));
+  }, []);
+  const handleSelectAllCompare = useCallback((tab: 'branch' | 'room') => {
+    if (tab === 'branch') setCompareBranchIds(branches.map((branch) => branch.id));
+    else setCompareRoomIds(roomTypes.map((room) => room.id));
+  }, [branches, roomTypes]);
+  const handleDeselectAllCompare = useCallback((tab: 'branch' | 'room') => {
+    if (tab === 'branch') setCompareBranchIds([]);
+    else setCompareRoomIds([]);
+  }, []);
+  const handleSelectComparisonRoom = useCallback((roomId: string) => {
+    setComparisonRoomId((current) => (roomId === selectedRoomId || roomId === current ? null : roomId));
+  }, [selectedRoomId]);
+  const handleToggleIncludeRoom = useCallback((index: number) => {
+    setMultiRooms((prev) => {
+      const room = prev[index];
+      if (!room) return prev;
+      const copy = [...prev];
+      copy[index] = { ...room, isIncluded: room.isIncluded === false ? true : false };
+      return copy;
+    });
+  }, []);
+  const handleShowRoomTab = useCallback(() => setActiveTab('room'), []);
+  const handleShowItemsTab = useCallback(() => setActiveTab('items'), []);
+  const handleShowFlyerTab = useCallback(() => { setFlyerVisited(true); setActiveTab('flyer'); }, []);
+  const preloadFlyer = useCallback(() => { void loadFlyer().catch(() => {}); }, []);
+  const handleShowSingleRoomMode = useCallback(() => setRoomMode('single'), []);
+  const handleShowMultiRoomMode = useCallback(() => setRoomMode('multi'), []);
+  const handleRetryFetch = useCallback(() => { void fetchData(activeTab === 'room' ? 'room' : 'items', true); }, [fetchData, activeTab]);
+
   return (
     <div className="min-h-dvh pb-16 bg-slate-50 text-slate-900">
       {/* Top Application Header */}
@@ -570,7 +613,7 @@ export default function App() {
             <div className="flex gap-1 p-1 bg-slate-100 rounded-lg w-full sm:w-auto">
               <button
                 type="button"
-                onClick={() => setActiveTab('room')}
+                onClick={handleShowRoomTab}
                 className={`flex-1 whitespace-nowrap px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
                   activeTab === 'room'
                     ? 'bg-brand-700 text-white'
@@ -581,7 +624,7 @@ export default function App() {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('items')}
+                onClick={handleShowItemsTab}
                 className={`flex-1 whitespace-nowrap px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
                   activeTab === 'items'
                     ? 'bg-brand-700 text-white'
@@ -590,7 +633,7 @@ export default function App() {
               >
                 Bồi thường vật dụng
               </button>
-              <button type="button" onPointerEnter={() => void loadFlyer().catch(() => {})} onFocus={() => void loadFlyer().catch(() => {})} onClick={() => { setFlyerVisited(true); setActiveTab('flyer'); }} className={`flex-1 whitespace-nowrap px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold ${activeTab === 'flyer' ? 'bg-brand-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Tạo ảnh</button>
+              <button type="button" onPointerEnter={preloadFlyer} onFocus={preloadFlyer} onClick={handleShowFlyerTab} className={`flex-1 whitespace-nowrap px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-semibold ${activeTab === 'flyer' ? 'bg-brand-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Tạo ảnh</button>
             </div>
           </div>
         </div>
@@ -609,7 +652,7 @@ export default function App() {
             <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200">
               <button
                 type="button"
-                onClick={() => setRoomMode('single')}
+                onClick={handleShowSingleRoomMode}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
                   roomMode === 'single'
                     ? 'bg-slate-900 text-white'
@@ -621,7 +664,7 @@ export default function App() {
               </button>
               <button
                 type="button"
-                onClick={() => setRoomMode('multi')}
+                onClick={handleShowMultiRoomMode}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
                   roomMode === 'multi'
                     ? 'bg-slate-900 text-white'
@@ -644,245 +687,100 @@ export default function App() {
 
         {flyerVisited && <div key="flyer-studio" hidden={activeTab !== 'flyer'}><FeatureBoundary><FlyerStudio /></FeatureBoundary></div>}
         {activeTab !== 'flyer' && (fetchError ? (
-          <FetchErrorView message={fetchError} onRetry={() => void fetchData(activeTab === 'room' ? 'room' : 'items')} />
+          <FetchErrorView message={fetchError} onRetry={handleRetryFetch} />
         ) : loading ? (
           <FeatureLoading />
         ) : (
           <FeatureBoundary key={activeTab} onReady={restoreScroll}>
             {activeTab === 'room' ? (
-              <>
-                <SurchargeBanner adjustments={dateAdjustments} />
-
-                {roomMode === 'single' ? (
-                  /* Single Room Mode UI */
-                  <div className="space-y-5 sm:space-y-6">
-                    {/* Top Configuration Console */}
-                    <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-visible relative z-30">
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-200">
-                        <BranchDropdown
-                          branches={branches}
-                          selectedBranchId={selectedBranchId}
-                          showDropdown={showBranchDropdown}
-                          onToggle={() => setShowBranchDropdown(!showBranchDropdown)}
-                          onSelect={(id) => {
-                            setSelectedBranchId(id);
-                            const available = roomTypes.filter((r) => r.branchId === id);
-                            if (available.length > 0) {
-                              setSelectedRoomId(available[0].id);
-                            } else {
-                              setSelectedRoomId('');
-                            }
-                          }}
-                        />
-                        <RoomDropdown
-                          roomTypes={filteredRoomTypes}
-                          selectedRoomId={selectedRoomId}
-                          showDropdown={showRoomDropdown}
-                          onToggle={() => setShowRoomDropdown(!showRoomDropdown)}
-                          onSelect={(id) => setSelectedRoomId(id)}
-                          formatCurrency={formatCurrency}
-                        />
-
-                        <DateRangePicker
-                          checkIn={checkIn}
-                          checkOut={checkOut}
-                          showDatePicker={showDatePicker}
-                          calculation={calculation}
-                          onToggle={(type) => setShowDatePicker(showDatePicker === type ? null : type)}
-                          onChange={(type, date) => {
-                            if (type === 'checkIn') setCheckIn(date);
-                            else setCheckOut(date);
-                          }}
-                          onClose={() => setShowDatePicker(null)}
-                        />
-                        <GlobalAdjustmentControl
-                          globalAdjustment={globalAdjustment}
-                          includeVAT={includeVAT}
-                          vatRate={vatRate}
-                          onToggleVAT={setIncludeVAT}
-                          onVatRateChange={setVatRate}
-                          showDropdown={showGlobalAdjTypeDropdown}
-                          onToggleDropdown={() => setShowGlobalAdjTypeDropdown(!showGlobalAdjTypeDropdown)}
-                          onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
-                          onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type })}
-                          onAmountChange={(amount) => setGlobalAdjustment({ ...globalAdjustment, amount })}
-                          onTogglePercentage={() =>
-                            setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })
-                          }
-                        />
-                      </div>
-                    </section>
-
-                    {/* Dual Column Layout: Price Quote (Left) & Comparisons + Quote Assistant (Right) */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
-                      <div className="lg:col-span-5">
-                        <PriceSummary
-                          calculation={calculation}
-                          comparisonDifference={comparisonDifference}
-                          comparisonVatDifference={comparisonVatDifference}
-                          mobileBookingSummary={<BookingSummary
-                          calculation={calculation}
-                          comparisonCalculation={comparisonCalculation}
-                          comparisonDifference={comparisonDifference}
-                          comparisonVatDifference={comparisonVatDifference}
-                          comparisonBranchName={branches.find(branch => branch.id === comparisonRoom?.branchId)?.name || ''}
-                          comparisonRoomName={comparisonRoom?.name || ''}
-                          comparisonName={comparisonName}
-                          paidAmount={paidAmount}
-                          globalAdjustment={globalAdjustment}
-                          selectedEarlyLateOptions={selectedEarlyLateOptions}
-                          checkIn={checkIn}
-                          checkOut={checkOut}
-                          branchName={branches.find((branch) => branch.id === selectedBranchId)?.name || ''}
-                          roomName={selectedRoom?.name || ''}
-                          formatCurrency={formatCurrency}
-                        />}
-                          comparisonName={comparisonName}
-                          originalRoomName={`${selectedRoom?.name || ''} (${branches.find((branch) => branch.id === selectedBranchId)?.name || ''})`}
-                          paidAmount={paidAmount}
-                          onPaidAmountChange={setPaidAmount}
-                          globalAdjustment={globalAdjustment}
-                          onToggleGoogleReviews={(checked) =>
-                            setGlobalAdjustment((prev) => ({ ...prev, googleReviews: checked }))
-                          }
-                          showNightlyDetails={showNightlyDetails}
-                          onToggleNightlyDetails={() => setShowNightlyDetails(!showNightlyDetails)}
-                          formatCurrency={formatCurrency}
-                          selectedEarlyLateOptions={selectedEarlyLateOptions}
-                          onToggleEarlyLateOption={toggleEarlyLateOption}
-                          checkOut={checkOut}
-                        />
-                      </div>
-                      <div className="lg:col-span-7 space-y-5">
-                        <div className="hidden lg:block">
-                        <BookingSummary
-                          calculation={calculation}
-                          comparisonCalculation={comparisonCalculation}
-                          comparisonDifference={comparisonDifference}
-                          comparisonVatDifference={comparisonVatDifference}
-                          comparisonBranchName={branches.find(branch => branch.id === comparisonRoom?.branchId)?.name || ''}
-                          comparisonRoomName={comparisonRoom?.name || ''}
-                          comparisonName={comparisonName}
-                          paidAmount={paidAmount}
-                          globalAdjustment={globalAdjustment}
-                          selectedEarlyLateOptions={selectedEarlyLateOptions}
-                          checkIn={checkIn}
-                          checkOut={checkOut}
-                          branchName={branches.find((branch) => branch.id === selectedBranchId)?.name || ''}
-                          roomName={selectedRoom?.name || ''}
-                          formatCurrency={formatCurrency}
-                        />
-                        </div>
-                        <ComparisonPanel
-                          comparisons={comparisons}
-                          branches={branches}
-                          roomTypes={roomTypes}
-                          compareBranchIds={compareBranchIds}
-                          compareRoomIds={compareRoomIds}
-                          showCompareFilter={showCompareFilter}
-                          filterTab={filterTab}
-                          selectedRoomId={comparisonRoomId || selectedRoomId}
-                          onToggleFilter={() => setShowCompareFilter(!showCompareFilter)}
-                          onCloseFilter={() => setShowCompareFilter(false)}
-                          onSetFilterTab={(tab) => setFilterTab(tab)}
-                          onToggleBranchFilter={(id) =>
-                            setCompareBranchIds((prev) =>
-                              prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                            )
-                          }
-                          onToggleRoomFilter={(id) =>
-                            setCompareRoomIds((prev) =>
-                              prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                            )
-                          }
-                          onSelectAll={(tab) => {
-                            if (tab === 'branch') setCompareBranchIds(branches.map((b) => b.id));
-                            else setCompareRoomIds(roomTypes.map((r) => r.id));
-                          }}
-                          onDeselectAll={(tab) => {
-                            if (tab === 'branch') setCompareBranchIds([]);
-                            else setCompareRoomIds([]);
-                          }}
-                          onSelectRoom={(_branchId, roomId) =>
-                            setComparisonRoomId((current) =>
-                              roomId === selectedRoomId || roomId === current ? null : roomId
-                            )
-                          }
-                          formatCurrency={formatCurrency}
-                        />
-
-
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Multi-Room Mode UI */
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
-                      <div className="lg:col-span-7 space-y-4">
-                        <MultiRoomSelector
-                          rooms={multiRooms}
-                          branches={branches}
-                          roomTypes={roomTypes}
-                          summary={multiRoomSummary}
-                          onAddRoom={handleAddMultiRoom}
-                          onDuplicateRoom={handleDuplicateMultiRoom}
-                          onRemoveRoom={handleRemoveMultiRoom}
-                          onUpdateRoom={handleUpdateMultiRoom}
-                          onToggleEarlyLate={handleToggleMultiEarlyLate}
-                          formatCurrency={formatCurrency}
-                        />
-                      </div>
-
-                      <div className="lg:col-span-5 space-y-4 sticky top-20">
-                        {/* Global adjustment control in multi-room mode */}
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 relative z-30">
-                          <GlobalAdjustmentControl
-                            globalAdjustment={globalAdjustment}
-                            includeVAT={includeVAT}
-                            vatRate={vatRate}
-                            onToggleVAT={setIncludeVAT}
-                            onVatRateChange={setVatRate}
-                            showDropdown={showGlobalAdjTypeDropdown}
-                            onToggleDropdown={() => setShowGlobalAdjTypeDropdown(!showGlobalAdjTypeDropdown)}
-                            onCloseDropdown={() => setShowGlobalAdjTypeDropdown(false)}
-                            onTypeChange={(type) => setGlobalAdjustment({ ...globalAdjustment, type })}
-                            onAmountChange={(amount) => setGlobalAdjustment({ ...globalAdjustment, amount })}
-                            onTogglePercentage={() =>
-                              setGlobalAdjustment({ ...globalAdjustment, isPercentage: !globalAdjustment.isPercentage })
-                            }
-                          />
-                        </div>
-
-                        <MultiRoomSummary
-                          summary={multiRoomSummary}
-                          globalAdjustment={globalAdjustment}
-                          onToggleGoogleReviews={(checked) =>
-                            setGlobalAdjustment((prev) => ({ ...prev, googleReviews: checked }))
-                          }
-                          includeVAT={includeVAT}
-                          vatRate={vatRate}
-                          onToggleIncludeRoom={(index) => {
-                            handleUpdateMultiRoom(index, {
-                              isIncluded: multiRooms[index]?.isIncluded === false ? true : false,
-                            });
-                          }}
-                          formatCurrency={formatCurrency}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="max-w-[1600px] mx-auto">
-                <ItemCompensation
-                  items={items}
-                  selectedQuantities={selectedQuantities}
-                  onChangeQuantity={onChangeQuantity}
+              roomMode === 'single' ? (
+                <RoomView
+                  branches={branches}
+                  roomTypes={roomTypes}
+                  filteredRoomTypes={filteredRoomTypes}
+                  dateAdjustments={dateAdjustments}
+                  selectedBranchId={selectedBranchId}
+                  selectedRoomId={selectedRoomId}
+                  checkIn={checkIn}
+                  checkOut={checkOut}
+                  showDatePicker={showDatePicker}
+                  calculation={calculation}
+                  comparisons={comparisons}
+                  comparisonRoom={comparisonRoom}
+                  comparisonCalculation={comparisonCalculation}
+                  comparisonDifference={comparisonDifference}
+                  comparisonVatDifference={comparisonVatDifference}
+                  comparisonName={comparisonName}
+                  paidAmount={paidAmount}
+                  globalAdjustment={globalAdjustment}
+                  selectedEarlyLateOptions={selectedEarlyLateOptions}
+                  showBranchDropdown={showBranchDropdown}
+                  showRoomDropdown={showRoomDropdown}
+                  showNightlyDetails={showNightlyDetails}
+                  showGlobalAdjTypeDropdown={showGlobalAdjTypeDropdown}
+                  showCompareFilter={showCompareFilter}
+                  filterTab={filterTab}
+                  comparisonRoomId={comparisonRoomId}
+                  compareBranchIds={compareBranchIds}
+                  compareRoomIds={compareRoomIds}
+                  onToggleBranchDropdown={handleToggleBranchDropdown}
+                  onSelectBranch={handleSelectBranch}
+                  onToggleRoomDropdown={handleToggleRoomDropdown}
+                  onSelectRoom={setSelectedRoomId}
+                  onToggleDatePicker={handleToggleDatePicker}
+                  onChangeDate={handleChangeDate}
+                  onCloseDatePicker={handleCloseDatePicker}
+                  onToggleGlobalAdjDropdown={handleToggleGlobalAdjDropdown}
+                  onCloseGlobalAdjDropdown={handleCloseGlobalAdjDropdown}
+                  onGlobalAdjTypeChange={handleGlobalAdjTypeChange}
+                  onGlobalAdjAmountChange={handleGlobalAdjAmountChange}
+                  onToggleGlobalAdjPercentage={handleToggleGlobalAdjPercentage}
+                  onPaidAmountChange={setPaidAmount}
+                  onToggleGoogleReviews={handleToggleGoogleReviews}
+                  onToggleNightlyDetails={handleToggleNightlyDetails}
+                  onToggleEarlyLateOption={toggleEarlyLateOption}
+                  onToggleCompareFilter={handleToggleCompareFilter}
+                  onCloseCompareFilter={handleCloseCompareFilter}
+                  onSetFilterTab={setFilterTab}
+                  onToggleBranchFilter={handleToggleBranchFilter}
+                  onToggleRoomFilter={handleToggleRoomFilter}
+                  onSelectAllCompare={handleSelectAllCompare}
+                  onDeselectAllCompare={handleDeselectAllCompare}
+                  onSelectComparisonRoom={handleSelectComparisonRoom}
                   formatCurrency={formatCurrency}
                 />
-              </div>
+              ) : (
+                <MultiRoomView
+                  rooms={multiRooms}
+                  branches={branches}
+                  roomTypes={roomTypes}
+                  summary={multiRoomSummary}
+                  globalAdjustment={globalAdjustment}
+                  includeVAT={includeVAT}
+                  vatRate={vatRate}
+                  showGlobalAdjTypeDropdown={showGlobalAdjTypeDropdown}
+                  onAddRoom={handleAddMultiRoom}
+                  onDuplicateRoom={handleDuplicateMultiRoom}
+                  onRemoveRoom={handleRemoveMultiRoom}
+                  onUpdateRoom={handleUpdateMultiRoom}
+                  onToggleEarlyLate={handleToggleMultiEarlyLate}
+                  onToggleGlobalAdjDropdown={handleToggleGlobalAdjDropdown}
+                  onCloseGlobalAdjDropdown={handleCloseGlobalAdjDropdown}
+                  onGlobalAdjTypeChange={handleGlobalAdjTypeChange}
+                  onGlobalAdjAmountChange={handleGlobalAdjAmountChange}
+                  onToggleGlobalAdjPercentage={handleToggleGlobalAdjPercentage}
+                  onToggleGoogleReviews={handleToggleGoogleReviews}
+                  onToggleIncludeRoom={handleToggleIncludeRoom}
+                  formatCurrency={formatCurrency}
+                />
+              )
+            ) : (
+              <ItemsView
+                items={items}
+                selectedQuantities={selectedQuantities}
+                onChangeQuantity={onChangeQuantity}
+                formatCurrency={formatCurrency}
+              />
             )}
           </FeatureBoundary>
         ))}

@@ -1,6 +1,7 @@
 import { Filter, Hotel, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { ComparisonItem, Branch, RoomType } from './types';
+import { memo } from 'react';
 
 interface ComparisonPanelProps {
   comparisons: ComparisonItem[];
@@ -22,7 +23,7 @@ interface ComparisonPanelProps {
   formatCurrency: (amount: number) => string;
 }
 
-export function ComparisonPanel({
+function ComparisonPanelBase({
   comparisons,
   branches,
   roomTypes,
@@ -247,3 +248,5 @@ export function ComparisonPanel({
     </section>
   );
 }
+
+export const ComparisonPanel = memo(ComparisonPanelBase);

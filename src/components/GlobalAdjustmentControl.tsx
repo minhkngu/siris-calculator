@@ -3,6 +3,7 @@ import { AnimatePresence } from 'motion/react';
 import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
 import { GlobalAdjustment } from '../components/types';
+import { memo } from 'react';
 
 interface GlobalAdjustmentControlProps {
   globalAdjustment: GlobalAdjustment;
@@ -12,13 +13,9 @@ interface GlobalAdjustmentControlProps {
   onTypeChange: (type: 'surcharge' | 'discount') => void;
   onAmountChange: (amount: number) => void;
   onTogglePercentage: () => void;
-  includeVAT: boolean;
-  vatRate: number;
-  onToggleVAT: (checked: boolean) => void;
-  onVatRateChange: (rate: number) => void;
 }
 
-export function GlobalAdjustmentControl({
+function GlobalAdjustmentControlBase({
   globalAdjustment,
   showDropdown,
   onToggleDropdown,
@@ -26,10 +23,6 @@ export function GlobalAdjustmentControl({
   onTypeChange,
   onAmountChange,
   onTogglePercentage,
-  includeVAT,
-  vatRate,
-  onToggleVAT,
-  onVatRateChange,
 }: GlobalAdjustmentControlProps) {
   const isSurcharge = globalAdjustment.type === 'surcharge';
 
@@ -184,3 +177,5 @@ export function GlobalAdjustmentControl({
     </div>
   );
 }
+
+export const GlobalAdjustmentControl = memo(GlobalAdjustmentControlBase);

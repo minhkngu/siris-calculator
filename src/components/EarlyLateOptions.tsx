@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { ChevronDown, Clock, Check, AlertCircle } from 'lucide-react';
 import { parseISO, getDay, isValid, addDays } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -12,7 +12,7 @@ interface EarlyLateOptionsProps {
   checkOut?: string;
 }
 
-export function EarlyLateOptions({
+function EarlyLateOptionsBase({
   selectedOptions,
   onToggle,
   calculation,
@@ -154,3 +154,5 @@ export function EarlyLateOptions({
     </div>
   );
 }
+
+export const EarlyLateOptions = memo(EarlyLateOptionsBase);

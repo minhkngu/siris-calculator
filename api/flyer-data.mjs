@@ -4,8 +4,9 @@ import { createSupabaseReader } from '../server/supabase-data.mjs';
 const read = createSupabaseReader();
 
 export default async function handler(req, res) {
-  res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
+  // Cached at the CDN for a minute; "Tải lại dữ liệu" appends a cache-buster.
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+  res.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');

@@ -1,9 +1,10 @@
-import { useId, useState } from 'react';
+import { memo, useId, useRef, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Check, Copy } from 'lucide-react';
 import type { CalculationResult, EarlyCheckinLateCheckoutType, GlobalAdjustment } from './types';
 import { getPriceBreakdown } from '../lib/priceBreakdown';
 import { getPaymentBalance } from '../lib/paymentBalance';
+import { copyTextToClipboard } from '../lib/clipboard';
 import { cn } from '../lib/utils';
 
 interface BookingSummaryProps {
@@ -24,7 +25,7 @@ interface BookingSummaryProps {
   formatCurrency: (amount: number) => string;
 }
 
-export function BookingSummary({
+function BookingSummaryBase({
   calculation,
   comparisonCalculation,
   comparisonDifference,
@@ -42,6 +43,7 @@ export function BookingSummary({
   formatCurrency,
 }: BookingSummaryProps) {
   const quoteId = useId();
+  const quoteRef = useRef<HTMLTextAreaElement>(null);
   const [copiedText, setCopiedText] = useState('');
   const [copyError, setCopyError] = useState('');
 
@@ -67,12 +69,13 @@ export function BookingSummary({
   }
 
   const balance = getPaymentBalance(calculation.finalTotal + comparisonDifference, paidAmount);
+  const stayNights = `${calculation.nights.length} đêm`;
 
   const quote = [
     ...(comparisonName ? [
-      `Phòng cũ: ${branchName} | ${roomName} | ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} | ${formatCurrency(baseLine?.amount ?? 0)}`,
-      `Phòng đổi: ${comparisonBranchName} | ${comparisonRoomName} | ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} | ${formatCurrency(comparisonCalculation?.nights.reduce((sum, night) => sum + night.basePrice, 0) ?? 0)}`,
-    ] : [`Phòng: ${branchName} | ${roomName} | ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} | ${formatCurrency(baseLine?.amount ?? 0)}`]),
+      `Phòng cũ: ${branchName} | ${roomName} | ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} | ${stayNights} | ${formatCurrency(baseLine?.amount ?? 0)}`,
+      `Phòng đổi: ${comparisonBranchName} | ${comparisonRoomName} | ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} | ${stayNights} | ${formatCurrency(comparisonCalculation?.nights.reduce((sum, night) => sum + night.basePrice, 0) ?? 0)}`,
+    ] : [`Phòng: ${branchName} | ${roomName} | ${format(parseISO(checkIn), 'dd/MM/yyyy')} → ${format(parseISO(checkOut), 'dd/MM/yyyy')} | ${stayNights} | ${formatCurrency(baseLine?.amount ?? 0)}`]),
     ...adjustments.map((line) => `${line.label}: ${line.amount < 0 ? '− ' : '+ '}${formatCurrency(Math.abs(line.amount))}`),
     `Tổng: ${formatCurrency(calculation.finalTotal + comparisonDifference)}`,
     ...(paidAmount > 0
@@ -83,13 +86,14 @@ export function BookingSummary({
 
   const handleCopy = async () => {
     setCopyError('');
-    try {
-      await navigator.clipboard.writeText(quote);
+    if (await copyTextToClipboard(quote)) {
       setCopiedText(quote);
       setTimeout(() => setCopiedText(''), 2500);
-    } catch {
-      setCopyError('Không thể sao chép tự động. Bạn có thể chọn nội dung bên dưới để sao chép.');
+      return;
     }
+    setCopyError('Không thể sao chép tự động. Nội dung bên dưới đã được chọn để bạn sao chép.');
+    quoteRef.current?.focus();
+    quoteRef.current?.select();
   };
 
   const isCopied = copiedText === quote;
@@ -121,6 +125,7 @@ export function BookingSummary({
 
       <textarea
         id={quoteId}
+        ref={quoteRef}
         readOnly
         value={quote}
         rows={Math.min(Math.max(quote.split('\n').length, 3), 9)}
@@ -130,3 +135,5 @@ export function BookingSummary({
     </section>
   );
 }
+
+export const BookingSummary = memo(BookingSummaryBase);
