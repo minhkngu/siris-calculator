@@ -4,6 +4,17 @@ export interface StayDiscount {
     discountAmount: number;
     isPercentage: boolean;
     name: string;
+    description?: string | null;
+    branchId: string | null;
+    roomTypeId: string | null;
+    stayStart: string | null;
+    stayEnd: string | null;
+    discountBasis: 'per_night' | 'per_stay';
+    maxDiscountPerNight: number | null;
+    maxDiscountPerStay: number | null;
+    priority: number;
+    isActive: boolean;
+    selectionMode?: 'automatic' | 'manual';
 }
 
 export interface Branch {
@@ -35,6 +46,7 @@ export interface GlobalAdjustment {
     amount: number;
     isPercentage: boolean;
     googleReviews?: boolean;
+    selectedPromotionIds?: string[];
 }
 
 export type EarlyCheckinLateCheckoutType =
@@ -68,6 +80,7 @@ export interface CalculationResult {
     totalBase: number;
     globalAdjustmentValue: number;
     googleReviewsDiscount: number;
+    manualDiscounts: { promotion: StayDiscount; amount: number }[];
     stayDiscount: StayDiscount | undefined;
     stayDiscountValue: number;
     earlyLateTotal: number;
@@ -119,6 +132,7 @@ export interface MultiRoomTotalSummary {
     totalEarlyLate: number;
     globalAdjustmentValue: number;
     googleReviewsDiscount: number;
+    manualDiscounts: { promotion: StayDiscount; amount: number }[];
     vatValue: number;
     finalTotal: number;
     deposit: number;

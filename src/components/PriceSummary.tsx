@@ -5,13 +5,17 @@ import { AnimatePresence } from 'motion/react';
 import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
 import { CalculationResult, GlobalAdjustment, EarlyCheckinLateCheckoutType } from './types';
+import { PromotionList } from './PromotionList';
+import type { StayDiscount } from './types';
 import { EarlyLateOptions } from './EarlyLateOptions';
-import { GoogleReviewsOption } from './GoogleReviewsOption';
 import { getPriceBreakdown } from '../lib/priceBreakdown';
 import { getPaymentBalance } from '../lib/paymentBalance';
 
 interface PriceSummaryProps {
+  promotions: StayDiscount[];
+  onToggleManualPromotion: (id: string) => void;
   calculation: CalculationResult | null;
+  comparisonCalculation: CalculationResult | null;
   comparisonDifference: number;
   comparisonVatDifference: number;
   mobileBookingSummary: ReactNode;
@@ -20,7 +24,6 @@ interface PriceSummaryProps {
   paidAmount: number;
   onPaidAmountChange: (amount: number) => void;
   globalAdjustment: GlobalAdjustment;
-  onToggleGoogleReviews: (checked: boolean) => void;
   showNightlyDetails: boolean;
   onToggleNightlyDetails: () => void;
   formatCurrency: (amount: number) => string;
@@ -30,7 +33,10 @@ interface PriceSummaryProps {
 }
 
 function PriceSummaryBase({
+  promotions,
+  onToggleManualPromotion,
   calculation,
+  comparisonCalculation,
   comparisonDifference,
   comparisonVatDifference,
   mobileBookingSummary,
@@ -39,7 +45,6 @@ function PriceSummaryBase({
   paidAmount,
   onPaidAmountChange,
   globalAdjustment,
-  onToggleGoogleReviews,
   showNightlyDetails,
   onToggleNightlyDetails,
   formatCurrency,
@@ -86,6 +91,17 @@ function PriceSummaryBase({
               {calculation.nights.length} đêm
             </div>
           </div>
+
+          <PromotionList
+            promotions={promotions}
+            selectedIds={globalAdjustment.selectedPromotionIds ?? []}
+            onToggle={onToggleManualPromotion}
+            applied={(() => {
+              const selected = comparisonName ? comparisonCalculation : calculation;
+              return [...(selected?.stayDiscount ? [{ id: selected.stayDiscount.id, label: comparisonName ? `Phòng đổi: ${comparisonName}` : '', amount: selected.stayDiscountValue }] : []), ...(selected?.manualDiscounts ?? []).map(entry => ({ id: entry.promotion.id, label: '', amount: entry.amount }))];
+            })()}
+            formatCurrency={formatCurrency}
+          />
 
           {/* Room comparison notification if active */}
           {comparisonName && (
@@ -257,13 +273,6 @@ function PriceSummaryBase({
             />
           </div>
 
-          <div className="pt-2 border-t border-slate-100">
-            {/* Google Reviews Promo */}
-            <GoogleReviewsOption
-              checked={!!globalAdjustment.googleReviews}
-              onChange={onToggleGoogleReviews}
-            />
-          </div>
         </>
       ) : (
         <div className="text-center py-10">

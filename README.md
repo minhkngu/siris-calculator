@@ -8,7 +8,7 @@ Phần mềm quản lý nội bộ dành cho Siris Residences — hỗ trợ tí
 - **Đa chi nhánh & loại phòng**: Lựa chọn và so sánh giá giữa các cơ sở.
 - **Giá linh hoạt**: Giá riêng cho ngày thường (CN-T5) và cuối tuần (T6-T7).
 - **Phụ thu/giảm giá theo ngày**: Tự động áp dụng cho ngày lễ, ngày đặc biệt.
-- **Giảm giá theo số đêm**: Tự động chọn ưu đãi tốt nhất dựa trên thời gian lưu trú.
+- **Giảm giá theo số đêm**: Tự động chọn khuyến mãi phù hợp có mức giảm lớn nhất từ bảng `promotions`.
 - **Điều chỉnh tổng đơn**: Phụ thu/giảm giá toàn bộ hóa đơn (% hoặc số tiền).
 - **VAT**: Tùy chọn bao gồm thuế GTGT, có thể điều chỉnh %.
 - **Check-in sớm / Check-out trễ**: 5 tùy chọn phí — từ 8:00 (50% giá đêm trước), từ 12:30, từ 13:00, trả phòng trước 13:00, trả phòng trước 18:00 (80% giá đêm sau, không áp dụng trả phòng vào Thứ 6 & Thứ 7).
@@ -75,7 +75,7 @@ npm run build
 
 ## Dữ liệu Supabase
 
-Ứng dụng đọc trực tiếp các bảng `branches`, `room_types`, `stay_discounts`, `date_adjustments` và `items` từ Supabase. Tab phòng và tab vật dụng được tải riêng, chỉ khi cần. Cấu hình khóa công khai (anon hoặc publishable), không dùng khóa service role. Các bảng cần có quyền đọc phù hợp với chính sách RLS của dự án.
+Ứng dụng đọc trực tiếp các bảng `branches`, `room_types`, `promotions`, `date_adjustments` và `items` từ Supabase. Tab phòng và tab vật dụng được tải riêng, chỉ khi cần. Cấu hình khóa công khai (anon hoặc publishable), không dùng khóa service role. Các bảng cần có quyền đọc phù hợp với chính sách RLS của dự án.
 
 Trên Vercel, thêm `VITE_SUPABASE_URL` và `VITE_SUPABASE_ANON_KEY` vào Environment Variables, sau đó build và triển khai lại. Đây là biến được đưa vào mã trình duyệt khi build.
 

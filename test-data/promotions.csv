@@ -1,0 +1,7 @@
+name,name_en,description,minnights,stay_start,stay_end,discountamount,ispercentage,discount_basis,max_discount_per_night,max_discount_per_stay,priority,is_active
+TEST 10% moi dem,TEST 10 percent per night,Test gia phong tieu chuan,1,2030-01-01,2030-01-31,10,true,per_night,,,0,true
+TEST 50000 moi dem,TEST 50000 per night,Test giam tien co dinh,1,2030-02-01,2030-02-28,50000,false,per_night,,,0,true
+TEST 20% tran 50000,TEST capped per night,Test tran moi dem,1,2030-03-01,2030-03-31,20,true,per_night,50000,,0,true
+TEST 100000 moi ky,TEST 100000 per stay,Test giam mot lan,1,2030-04-01,2030-04-30,100000,false,per_stay,,,0,true
+TEST 10% tran 70000,TEST capped per stay,Test tran ca ky,1,2030-05-01,2030-05-31,10,true,per_night,,70000,0,true
+TEST 3 dem 10%,TEST minimum 3 nights,Test so dem toi thieu,3,2030-06-01,2030-06-30,10,true,per_stay,,,0,true

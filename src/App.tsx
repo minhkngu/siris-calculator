@@ -331,8 +331,8 @@ export default function App() {
             setCheckOut(restoredCheckOut);
             const legacyGoogleReviews = (restoredAdjustment as (GlobalAdjustment & { preset?: string }) | undefined)?.preset === 'google_reviews';
             setGlobalAdjustment(legacyGoogleReviews
-              ? { type: 'discount', amount: 0, isPercentage: true, googleReviews: true }
-              : validAdjustment ? restoredAdjustment : { type: 'surcharge', amount: 0, isPercentage: true });
+              ? { type: 'discount', amount: 0, isPercentage: true }
+              : validAdjustment ? { ...restoredAdjustment, googleReviews: false } : { type: 'surcharge', amount: 0, isPercentage: true });
             setIncludeVAT(typeof restore?.includeVAT === 'boolean' ? restore.includeVAT : false);
             setVatRate(restore && Number.isFinite(restore.vatRate) && restore.vatRate >= 0 && restore.vatRate <= 100
               ? restore.vatRate
@@ -549,8 +549,10 @@ export default function App() {
   const handleToggleGlobalAdjPercentage = useCallback(() => {
     setGlobalAdjustment((prev) => ({ ...prev, isPercentage: !prev.isPercentage }));
   }, []);
-  const handleToggleGoogleReviews = useCallback((checked: boolean) => {
-    setGlobalAdjustment((prev) => ({ ...prev, googleReviews: checked }));
+  const handleToggleManualPromotion = useCallback((id: string) => {
+    setGlobalAdjustment(prev => ({ ...prev, selectedPromotionIds: prev.selectedPromotionIds?.includes(id)
+      ? prev.selectedPromotionIds.filter(value => value !== id)
+      : [...(prev.selectedPromotionIds ?? []), id] }));
   }, []);
   const handleToggleNightlyDetails = useCallback(() => setShowNightlyDetails((prev) => !prev), []);
   const handleToggleCompareFilter = useCallback(() => setShowCompareFilter((prev) => !prev), []);
@@ -695,6 +697,8 @@ export default function App() {
             {activeTab === 'room' ? (
               roomMode === 'single' ? (
                 <RoomView
+                  promotions={stayDiscounts}
+                  onToggleManualPromotion={handleToggleManualPromotion}
                   branches={branches}
                   roomTypes={roomTypes}
                   filteredRoomTypes={filteredRoomTypes}
@@ -736,7 +740,6 @@ export default function App() {
                   onGlobalAdjAmountChange={handleGlobalAdjAmountChange}
                   onToggleGlobalAdjPercentage={handleToggleGlobalAdjPercentage}
                   onPaidAmountChange={setPaidAmount}
-                  onToggleGoogleReviews={handleToggleGoogleReviews}
                   onToggleNightlyDetails={handleToggleNightlyDetails}
                   onToggleEarlyLateOption={toggleEarlyLateOption}
                   onToggleCompareFilter={handleToggleCompareFilter}
@@ -751,6 +754,8 @@ export default function App() {
                 />
               ) : (
                 <MultiRoomView
+                  promotions={stayDiscounts}
+                  onToggleManualPromotion={handleToggleManualPromotion}
                   rooms={multiRooms}
                   branches={branches}
                   roomTypes={roomTypes}
@@ -769,7 +774,6 @@ export default function App() {
                   onGlobalAdjTypeChange={handleGlobalAdjTypeChange}
                   onGlobalAdjAmountChange={handleGlobalAdjAmountChange}
                   onToggleGlobalAdjPercentage={handleToggleGlobalAdjPercentage}
-                  onToggleGoogleReviews={handleToggleGoogleReviews}
                   onToggleIncludeRoom={handleToggleIncludeRoom}
                   formatCurrency={formatCurrency}
                 />

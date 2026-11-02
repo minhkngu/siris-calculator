@@ -72,22 +72,22 @@ test('stacks adjustments against base price and applies adjacent-night fees', ()
     assert.equal(weekday.earlyLateTotal, 840000);
 });
 
-test('selects highest eligible night threshold, preserves ties and VAT order', () => {
-    const discounts = [
-        { minNights: 1, discountAmount: 5, isPercentage: true },
-        { minNights: 3, discountAmount: 10, isPercentage: true },
-        { minNights: 3, discountAmount: 20, isPercentage: true },
-        { minNights: 7, discountAmount: 50, isPercentage: true },
-    ];
-    const original = structuredClone(discounts);
-    const result = calculate('2026-09-07', '2026-09-10', [], { type: 'surcharge', amount: 10, isPercentage: true }, discounts, true, new Set(['early_1230', 'late_1300']));
-    assert.equal(result.stayDiscount, discounts[1]);
+test('selects the greatest promotion discount and uses priority to break ties', () => {
+    const promotion = { id: 'a', name: 'A', minNights: 1, discountAmount: 10, isPercentage: true, branchId: null, roomTypeId: null, stayStart: null, stayEnd: null, discountBasis: 'per_stay', maxDiscountPerNight: null, maxDiscountPerStay: null, priority: 0, isActive: true };
+    const discounts = [promotion, { ...promotion, id: 'b', name: 'B', priority: 5 }, { ...promotion, id: 'c', discountAmount: 20, branchId: 'other' }];
+    const result = calculate('2026-09-07', '2026-09-10', [], noAdjustment, discounts);
+    assert.equal(result.stayDiscount.id, 'b');
     assert.equal(result.stayDiscountValue, 300000);
-    assert.equal(result.globalAdjustmentValue, 300000);
-    assert.equal(result.earlyLateTotal, 250000);
-    assert.equal(result.vatValue, 325000);
-    assert.equal(result.finalTotal, 3575000);
-    assert.deepEqual(discounts, original);
+});
+
+test('promotions apply to eligible nights with nightly and stay caps', () => {
+    const promotion = { id: 'a', name: 'Cap', minNights: 2, discountAmount: 20, isPercentage: true, branchId: 'b1', roomTypeId: 'r1', stayStart: '2026-09-11', stayEnd: '2026-09-12', discountBasis: 'per_night', maxDiscountPerNight: 200000, maxDiscountPerStay: 350000, priority: 0, isActive: true };
+    const result = calculate('2026-09-10', '2026-09-13', [], noAdjustment, [promotion], true);
+    assert.equal(result.stayDiscountValue, 350000);
+    assert.equal(result.finalTotal, 4015000);
+    assert.equal(calculate('2026-09-10', '2026-09-11', [], noAdjustment, [promotion]).stayDiscountValue, 0);
+    const fixed = { ...promotion, isPercentage: false, discountAmount: 100000, discountBasis: 'per_stay', maxDiscountPerNight: null, maxDiscountPerStay: null };
+    assert.equal(calculate('2026-09-10', '2026-09-13', [], noAdjustment, [fixed]).stayDiscountValue, 100000);
 });
 
 test('multi-room totals exclude unchecked/invalid rooms and apply VAT once', () => {
@@ -167,4 +167,23 @@ test('multi-room 22:00 discount affects only included rooms and precedes VAT', (
     assert.equal(result.totalEarlyLate, -200000);
     assert.equal(result.finalTotal, 880000);
     assert.equal(result.deposit, 440000);
+});
+
+test('CSV promotion examples produce the documented totals', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const csv = await readFile(new URL('../test-data/promotions.csv', import.meta.url), 'utf8');
+    const [header, ...lines] = csv.trim().split('\n').map(line => line.split(','));
+    const promotions = lines.map(values => {
+        const row = Object.fromEntries(header.map((key, index) => [key, values[index]]));
+        return { id: row.name, name: row.name, minNights: Number(row.minnights), discountAmount: Number(row.discountamount), isPercentage: row.ispercentage === 'true', branchId: null, roomTypeId: null, stayStart: row.stay_start || null, stayEnd: row.stay_end || null, discountBasis: row.discount_basis, maxDiscountPerNight: row.max_discount_per_night ? Number(row.max_discount_per_night) : null, maxDiscountPerStay: row.max_discount_per_stay ? Number(row.max_discount_per_stay) : null, priority: Number(row.priority), isActive: row.is_active === 'true' };
+    });
+    const standard = { ...room, weekdayPrice: 440000, weekendPrice: 480000 };
+    for (const [start, end, expected] of [
+        ['2030-01-03', '2030-01-05', 828000], ['2030-02-07', '2030-02-09', 820000],
+        ['2030-03-07', '2030-03-09', 820000], ['2030-04-04', '2030-04-06', 820000],
+        ['2030-05-02', '2030-05-04', 850000], ['2030-06-06', '2030-06-08', 920000],
+        ['2030-06-06', '2030-06-09', 1260000],
+    ]) {
+        assert.equal(calculateForRoomLogic(standard, start, end, [], noAdjustment, promotions, false, 10).finalTotal, expected, start);
+    }
 });

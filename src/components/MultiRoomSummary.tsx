@@ -1,16 +1,18 @@
 import { memo, useRef, useState } from 'react';
 import { Check, Copy, CheckCheck } from 'lucide-react';
+import { PromotionList } from './PromotionList';
+import type { StayDiscount } from './types';
 import { cn } from '../lib/utils';
 import { GlobalAdjustment, MultiRoomTotalSummary } from './types';
 import { format, parseISO } from 'date-fns';
-import { GoogleReviewsOption } from './GoogleReviewsOption';
 import { getEarlyLateDetails } from '../lib/earlyLateDetails';
 import { copyTextToClipboard } from '../lib/clipboard';
 
 interface MultiRoomSummaryProps {
+  promotions: StayDiscount[];
+  onToggleManualPromotion: (id: string) => void;
   summary: MultiRoomTotalSummary;
   globalAdjustment: GlobalAdjustment;
-  onToggleGoogleReviews: (checked: boolean) => void;
   includeVAT: boolean;
   vatRate: number;
   onToggleIncludeRoom?: (index: number) => void;
@@ -18,9 +20,10 @@ interface MultiRoomSummaryProps {
 }
 
 function MultiRoomSummaryBase({
+  promotions,
+  onToggleManualPromotion,
   summary,
   globalAdjustment,
-  onToggleGoogleReviews,
   includeVAT,
   vatRate,
   onToggleIncludeRoom,
@@ -34,6 +37,11 @@ function MultiRoomSummaryBase({
   const summaryRef = useRef<HTMLTextAreaElement>(null);
 
   const includedItems = summary.items.filter((it) => it.item.isIncluded !== false);
+  const promotionDetails = summary.items.flatMap((item, index) =>
+    item.item.isIncluded !== false && item.calculation?.stayDiscount && item.calculation.stayDiscountValue > 0
+      ? [{ label: `Phòng ${index + 1} · ${item.calculation.stayDiscount.name}`, amount: item.calculation.stayDiscountValue }]
+      : []
+  );
   const earlyLateDetails = summary.items.flatMap((item, index) =>
     item.item.isIncluded !== false && item.calculation
       ? getEarlyLateDetails(item.calculation, item.item.earlyLateOptions, item.item.checkOut).map((line) => ({
@@ -60,6 +68,7 @@ function MultiRoomSummaryBase({
     roomSummaryLines.length > 0
       ? [
           ...roomSummaryLines,
+          ...promotionDetails.map((line) => `${line.label}: − ${formatCurrency(line.amount)}`),
           ...earlyLateDetails.map((line) => `${line.label}: ${formatDetail(line.amount)}`),
           `Tổng giá tất cả phòng: ${formatCurrency(summary.finalTotal)}`,
         ].join('\n')
@@ -95,9 +104,8 @@ function MultiRoomSummaryBase({
 
     text += `TỔNG CỘNG:\n`;
     text += `• Tổng tiền phòng gốc: ${formatCurrency(summary.totalBase)}\n`;
-    if (summary.totalStayDiscounts > 0) {
-      text += `• Giảm giá lưu trú dài ngày: -${formatCurrency(summary.totalStayDiscounts)}\n`;
-    }
+    for (const entry of summary.manualDiscounts) text += `• ${entry.promotion.name}: -${formatCurrency(entry.amount)}\n`;
+    for (const line of promotionDetails) text += `• ${line.label}: -${formatCurrency(line.amount)}\n`;
     for (const line of earlyLateDetails) text += `• ${line.label}: ${formatDetail(line.amount)}\n`;
     if (globalAdjustment.amount > 0) {
       text += `• ${globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'}: ${globalAdjustment.type === 'surcharge' ? '+' : '-'}${formatCurrency(summary.globalAdjustmentValue)}\n`;
@@ -135,6 +143,16 @@ function MultiRoomSummaryBase({
           {summary.totalNights} đêm tổng cộng
         </span>
       </div>
+
+      <PromotionList
+        promotions={promotions}
+        selectedIds={globalAdjustment.selectedPromotionIds ?? []}
+        onToggle={onToggleManualPromotion}
+        applied={[...summary.manualDiscounts.map(entry => ({ id: entry.promotion.id, label: 'Cả đơn', amount: entry.amount })), ...summary.items.flatMap((entry, index) => entry.item.isIncluded !== false && entry.calculation?.stayDiscount
+          ? [{ id: entry.calculation.stayDiscount.id, label: `Phòng ${index + 1}`, amount: entry.calculation.stayDiscountValue }]
+          : [])]}
+        formatCurrency={formatCurrency}
+      />
 
       {roomSummary && (
         <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 space-y-2">
@@ -224,9 +242,12 @@ function MultiRoomSummaryBase({
           <span className="font-semibold text-slate-900 tabular-nums">{formatCurrency(summary.totalBase)}</span>
         </div>
 
+        {summary.manualDiscounts.map(entry => (
+          <div key={entry.promotion.id} className="flex justify-between text-emerald-800"><span>{entry.promotion.name}</span><span>−{formatCurrency(entry.amount)}</span></div>
+        ))}
         {summary.totalStayDiscounts > 0 && (
-          <div className="flex justify-between text-emerald-800 bg-emerald-50 px-2 py-1 rounded">
-            <span>Giảm giá lưu trú dài ngày</span>
+          <div className="flex justify-between text-emerald-800">
+            <span>Tổng khuyến mãi</span>
             <span className="font-semibold tabular-nums">−{formatCurrency(summary.totalStayDiscounts)}</span>
           </div>
         )}
@@ -262,10 +283,6 @@ function MultiRoomSummaryBase({
             <span className="font-semibold text-slate-900 tabular-nums">{formatCurrency(summary.vatValue)}</span>
           </div>
         )}
-      </div>
-
-      <div className="pt-2 border-t border-slate-100">
-        <GoogleReviewsOption checked={!!globalAdjustment.googleReviews} onChange={onToggleGoogleReviews} />
       </div>
 
       {/* Copy Quote Button */}

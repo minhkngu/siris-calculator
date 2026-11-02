@@ -9,6 +9,7 @@ import { BookingSummary } from '../../components/BookingSummary';
 import { ComparisonPanel } from '../../components/ComparisonPanel';
 import type {
   Branch,
+  StayDiscount,
   CalculationResult,
   ComparisonItem,
   DateAdjustment,
@@ -18,6 +19,8 @@ import type {
 } from '../../components/types';
 
 export interface RoomViewProps {
+  promotions: StayDiscount[];
+  onToggleManualPromotion: (id: string) => void;
   branches: Branch[];
   roomTypes: RoomType[];
   filteredRoomTypes: RoomType[];
@@ -59,7 +62,6 @@ export interface RoomViewProps {
   onGlobalAdjAmountChange: (amount: number) => void;
   onToggleGlobalAdjPercentage: () => void;
   onPaidAmountChange: (amount: number) => void;
-  onToggleGoogleReviews: (checked: boolean) => void;
   onToggleNightlyDetails: () => void;
   onToggleEarlyLateOption: (type: EarlyCheckinLateCheckoutType) => void;
   onToggleCompareFilter: () => void;
@@ -74,6 +76,8 @@ export interface RoomViewProps {
 }
 
 function RoomViewBase({
+  promotions,
+  onToggleManualPromotion,
   branches,
   roomTypes,
   filteredRoomTypes,
@@ -115,7 +119,6 @@ function RoomViewBase({
   onGlobalAdjAmountChange,
   onToggleGlobalAdjPercentage,
   onPaidAmountChange,
-  onToggleGoogleReviews,
   onToggleNightlyDetails,
   onToggleEarlyLateOption,
   onToggleCompareFilter,
@@ -211,7 +214,10 @@ function RoomViewBase({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
           <div className="lg:col-span-5">
             <PriceSummary
+              onToggleManualPromotion={onToggleManualPromotion}
+              promotions={promotions}
               calculation={calculation}
+              comparisonCalculation={comparisonCalculation}
               comparisonDifference={comparisonDifference}
               comparisonVatDifference={comparisonVatDifference}
               mobileBookingSummary={bookingSummary}
@@ -220,7 +226,6 @@ function RoomViewBase({
               paidAmount={paidAmount}
               onPaidAmountChange={onPaidAmountChange}
               globalAdjustment={globalAdjustment}
-              onToggleGoogleReviews={onToggleGoogleReviews}
               showNightlyDetails={showNightlyDetails}
               onToggleNightlyDetails={onToggleNightlyDetails}
               formatCurrency={formatCurrency}

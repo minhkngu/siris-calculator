@@ -1,0 +1,13 @@
+﻿Mã test,Nội dung,Ngày nhận,Ngày trả,Giá gốc,Giảm,Còn lại,Chương trình được chọn
+TEST MẪU 01,Giảm 10% mỗi đêm,2026-10-08,2026-10-10,920000,92000,828000,TEST MẪU 01 - Giảm 10% mỗi đêm
+TEST MẪU 02,Giảm 50.000đ mỗi đêm,2026-10-15,2026-10-17,920000,100000,820000,TEST MẪU 02 - Giảm 50.000đ mỗi đêm
+TEST MẪU 03,Giảm 100.000đ cả kỳ,2026-10-22,2026-10-24,920000,100000,820000,TEST MẪU 03 - Giảm 100.000đ cả kỳ
+TEST MẪU 04,Giảm 10% cả kỳ,2026-10-29,2026-10-31,920000,92000,828000,TEST MẪU 04 - Giảm 10% cả kỳ
+TEST MẪU 05,Trần 50.000đ mỗi đêm,2026-11-05,2026-11-07,920000,100000,820000,TEST MẪU 05 - Trần 50.000đ mỗi đêm
+TEST MẪU 06,Cả hai trần,2026-11-12,2026-11-14,920000,70000,850000,TEST MẪU 06 - Cả hai trần
+TEST MẪU 07,Chỉ đêm cuối được giảm,2026-11-19,2026-11-21,920000,48000,872000,TEST MẪU 07 - Chỉ đêm cuối được giảm
+TEST MẪU 08,Chỉ ngày trả nằm trong ưu đãi,2026-11-26,2026-11-28,920000,0,920000,Không áp dụng
+TEST MẪU 09,Không đủ 3 đêm,2026-12-03,2026-12-05,920000,0,920000,Không áp dụng
+TEST MẪU 10,Chương trình đã tắt,2026-12-10,2026-12-12,920000,0,920000,Không áp dụng
+TEST MẪU 11,Chọn giảm nhiều nhất,2026-12-17,2026-12-19,920000,184000,736000,TEST MẪU 11 B
+TEST MẪU 12,Cùng mức giảm chọn priority cao,2026-12-24,2026-12-26,920000,92000,828000,TEST MẪU 12 B

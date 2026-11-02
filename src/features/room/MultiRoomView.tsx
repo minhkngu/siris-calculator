@@ -2,6 +2,7 @@ import { lazy, memo } from 'react';
 import { GlobalAdjustmentControl } from '../../components/GlobalAdjustmentControl';
 import type {
   Branch,
+  StayDiscount,
   EarlyCheckinLateCheckoutType,
   GlobalAdjustment,
   MultiRoomTotalSummary,
@@ -21,6 +22,8 @@ const MultiRoomSelector = lazy(loadMultiSelector);
 const MultiRoomSummary = lazy(loadMultiSummary);
 
 export interface MultiRoomViewProps {
+  promotions: StayDiscount[];
+  onToggleManualPromotion: (id: string) => void;
   rooms: SelectedRoomItem[];
   branches: Branch[];
   roomTypes: RoomType[];
@@ -39,12 +42,13 @@ export interface MultiRoomViewProps {
   onGlobalAdjTypeChange: (type: 'surcharge' | 'discount') => void;
   onGlobalAdjAmountChange: (amount: number) => void;
   onToggleGlobalAdjPercentage: () => void;
-  onToggleGoogleReviews: (checked: boolean) => void;
   onToggleIncludeRoom: (index: number) => void;
   formatCurrency: (amount: number) => string;
 }
 
 function MultiRoomViewBase({
+  promotions,
+  onToggleManualPromotion,
   rooms,
   branches,
   roomTypes,
@@ -63,7 +67,6 @@ function MultiRoomViewBase({
   onGlobalAdjTypeChange,
   onGlobalAdjAmountChange,
   onToggleGlobalAdjPercentage,
-  onToggleGoogleReviews,
   onToggleIncludeRoom,
   formatCurrency,
 }: MultiRoomViewProps) {
@@ -100,9 +103,10 @@ function MultiRoomViewBase({
           </div>
 
           <MultiRoomSummary
+            onToggleManualPromotion={onToggleManualPromotion}
+            promotions={promotions}
             summary={summary}
             globalAdjustment={globalAdjustment}
-            onToggleGoogleReviews={onToggleGoogleReviews}
             includeVAT={includeVAT}
             vatRate={vatRate}
             onToggleIncludeRoom={onToggleIncludeRoom}

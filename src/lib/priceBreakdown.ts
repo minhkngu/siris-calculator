@@ -19,6 +19,7 @@ export function getPriceBreakdown(rooms: BreakdownRoom[], adjustment: GlobalAdju
             const amount = entry.isPercentage ? Math.round(night.basePrice * entry.amount / 100) : entry.amount;
             add(entry.note || (entry.type === 'surcharge' ? 'Phụ thu theo ngày' : 'Giảm giá theo ngày'), entry.type === 'surcharge' ? amount : -amount);
         }
+        for (const entry of calculation.manualDiscounts ?? []) add(entry.promotion.name, -entry.amount);
         if (calculation.stayDiscount) add(calculation.stayDiscount.name || 'Giảm giá lưu trú', -calculation.stayDiscountValue);
         for (const line of getEarlyLateDetails(calculation, options, checkOut)) add(line.label, line.amount);
     }

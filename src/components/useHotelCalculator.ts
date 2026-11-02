@@ -29,6 +29,7 @@ const EMPTY_MULTI_SUMMARY: import('./types').MultiRoomTotalSummary = {
     totalEarlyLate: 0,
     globalAdjustmentValue: 0,
     googleReviewsDiscount: 0,
+    manualDiscounts: [],
     vatValue: 0,
     finalTotal: 0,
     deposit: 0,

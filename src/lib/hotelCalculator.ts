@@ -39,10 +39,40 @@ function roomCacheKey(
 ): string {
     const options = earlyLateOptions.size ? [...earlyLateOptions].sort().join('+') : '';
     return [
-        room.id, room.weekdayPrice, room.weekendPrice, checkIn, checkOut,
+        room.id, room.branchId, room.weekdayPrice, room.weekendPrice, checkIn, checkOut,
         globalAdjustment.type, globalAdjustment.amount, globalAdjustment.isPercentage ? 1 : 0,
-        globalAdjustment.googleReviews ? 1 : 0, includeVAT ? 1 : 0, vatRate, options,
+        globalAdjustment.googleReviews ? 1 : 0, [...(globalAdjustment.selectedPromotionIds ?? [])].sort().join(','), includeVAT ? 1 : 0, vatRate, options,
     ].join('|');
+}
+
+type ManualRoom = { room: RoomType; nights: CalculationResult['nights']; subtotal: number };
+
+function calculateManualDiscounts(promotions: StayDiscount[], selected: string[], rooms: ManualRoom[]) {
+    const result: { promotion: StayDiscount; amount: number }[] = [];
+    let remaining = Math.max(0, rooms.reduce((sum, room) => sum + room.subtotal, 0));
+    for (const promotion of promotions) {
+        if (!promotion.isActive || promotion.selectionMode !== 'manual' || !selected.includes(promotion.id)) continue;
+        let eligibleSubtotal = 0;
+        const prices: number[] = [];
+        for (const item of rooms) {
+            if (item.nights.length < promotion.minNights || (promotion.branchId && promotion.branchId !== item.room.branchId) || (promotion.roomTypeId && promotion.roomTypeId !== item.room.id)) continue;
+            const nights = item.nights.filter(n => (!promotion.stayStart || n.date >= promotion.stayStart) && (!promotion.stayEnd || n.date <= promotion.stayEnd));
+            if (!nights.length) continue;
+            const total = item.nights.reduce((sum, n) => sum + Math.max(0, n.finalPrice), 0);
+            const ratio = total ? Math.max(0, item.subtotal) / total : 0;
+            for (const night of nights) prices.push(Math.max(0, night.finalPrice) * ratio);
+            eligibleSubtotal += nights.reduce((sum, n) => sum + Math.max(0, n.finalPrice) * ratio, 0);
+        }
+        if (!prices.length) continue;
+        let amount = promotion.discountBasis === 'per_night'
+            ? prices.reduce((sum, price) => sum + Math.min(price, promotion.isPercentage ? Math.round(price * promotion.discountAmount / 100) : promotion.discountAmount, promotion.maxDiscountPerNight ?? Infinity), 0)
+            : promotion.isPercentage && promotion.maxDiscountPerNight != null
+                ? prices.reduce((sum, price) => sum + Math.min(price, Math.round(price * promotion.discountAmount / 100), promotion.maxDiscountPerNight!), 0)
+                : promotion.isPercentage ? Math.round(eligibleSubtotal * promotion.discountAmount / 100) : promotion.discountAmount;
+        amount = Math.max(0, Math.round(Math.min(amount, promotion.maxDiscountPerStay ?? Infinity, eligibleSubtotal, remaining)));
+        if (amount > 0) { result.push({ promotion, amount }); remaining -= amount; }
+    }
+    return result;
 }
 
 export function calculateForRoomLogic(
@@ -128,17 +158,33 @@ function computeRoomCalculation(
 
     const nightCount = breakdown.length;
     let bestStayDiscount: StayDiscount | undefined;
-    for (const discount of stayDiscounts) {
-        if (nightCount >= discount.minNights &&
-            (!bestStayDiscount || discount.minNights > bestStayDiscount.minNights)) {
-            bestStayDiscount = discount;
-        }
-    }
     let stayDiscountValue = 0;
-    if (bestStayDiscount) {
-        stayDiscountValue = bestStayDiscount.isPercentage
-            ? Math.round(totalBase * bestStayDiscount.discountAmount / 100)
-            : bestStayDiscount.discountAmount;
+    for (const discount of stayDiscounts) {
+        if (discount.selectionMode === 'manual' || !discount.isActive || nightCount < discount.minNights ||
+            (discount.branchId && discount.branchId !== room.branchId) ||
+            (discount.roomTypeId && discount.roomTypeId !== room.id)) continue;
+        const eligible = breakdown.filter(night =>
+            (!discount.stayStart || night.date >= discount.stayStart) &&
+            (!discount.stayEnd || night.date <= discount.stayEnd));
+        if (!eligible.length) continue;
+        const base = eligible.reduce((sum, night) => sum + Math.max(0, night.finalPrice), 0);
+        let value: number;
+        if (discount.discountBasis === 'per_night') {
+            value = eligible.reduce((sum, night) => {
+                const price = Math.max(0, night.finalPrice);
+                const amount = discount.isPercentage ? Math.round(price * discount.discountAmount / 100) : discount.discountAmount;
+                return sum + Math.min(price, amount, discount.maxDiscountPerNight ?? Infinity);
+            }, 0);
+        } else if (discount.isPercentage && discount.maxDiscountPerNight != null) {
+            value = eligible.reduce((sum, night) => sum + Math.min(Math.max(0, night.finalPrice), Math.round(Math.max(0, night.finalPrice) * discount.discountAmount / 100), discount.maxDiscountPerNight!), 0);
+        } else {
+            value = discount.isPercentage ? Math.round(base * discount.discountAmount / 100) : discount.discountAmount;
+        }
+        value = Math.min(base, value, discount.maxDiscountPerStay ?? Infinity);
+        if (value > stayDiscountValue || (value > 0 && value === stayDiscountValue && discount.priority > (bestStayDiscount?.priority ?? -Infinity))) {
+            bestStayDiscount = discount;
+            stayDiscountValue = value;
+        }
     }
 
     let finalTotal = totalBase - stayDiscountValue;
@@ -170,13 +216,15 @@ function computeRoomCalculation(
 
     finalTotal += earlyLateTotal;
 
+    const manualDiscounts = calculateManualDiscounts(stayDiscounts, globalAdjustment.selectedPromotionIds ?? [], [{ room, nights: breakdown, subtotal: finalTotal }]);
+    const manualTotal = manualDiscounts.reduce((sum, entry) => sum + entry.amount, 0);
     const googleReviewsDiscount = globalAdjustment.googleReviews
         ? Math.min(70000, Math.round(Math.max(0, finalTotal) * 0.1)) : 0;
     const globalValue = globalAdjustment.isPercentage
             ? Math.round(totalBase * globalAdjustment.amount / 100)
             : globalAdjustment.amount;
     finalTotal += globalAdjustment.type === 'surcharge' ? globalValue : -globalValue;
-    finalTotal -= googleReviewsDiscount;
+    finalTotal -= googleReviewsDiscount + manualTotal;
 
     let vatValue = 0;
     if (includeVAT) {
@@ -191,6 +239,7 @@ function computeRoomCalculation(
         totalBase,
         globalAdjustmentValue: globalValue,
         googleReviewsDiscount,
+        manualDiscounts,
         stayDiscount: bestStayDiscount,
         stayDiscountValue,
         earlyLateTotal,
@@ -260,6 +309,8 @@ export function calculateMultiRoomLogic(
 
     const combinedSubtotal = totalBase - totalStayDiscounts + totalEarlyLate;
 
+    const manualDiscounts = calculateManualDiscounts(stayDiscounts, globalAdjustment.selectedPromotionIds ?? [], items.flatMap(entry => entry.item.isIncluded !== false && entry.room && entry.calculation ? [{ room: entry.room, nights: entry.calculation.nights, subtotal: entry.calculation.finalTotal }] : []));
+    const manualTotal = manualDiscounts.reduce((sum, entry) => sum + entry.amount, 0);
     // Apply global adjustment on combined subtotal
     const googleReviewsDiscount = globalAdjustment.googleReviews
         ? Math.min(70000, Math.round(Math.max(0, combinedSubtotal) * 0.1)) : 0;
@@ -273,7 +324,7 @@ export function calculateMultiRoomLogic(
     } else {
         finalBeforeVat -= globalValue;
     }
-    finalBeforeVat = Math.max(0, finalBeforeVat - googleReviewsDiscount);
+    finalBeforeVat = Math.max(0, finalBeforeVat - googleReviewsDiscount - manualTotal);
 
     let vatValue = 0;
     let finalTotal = finalBeforeVat;
@@ -293,6 +344,7 @@ export function calculateMultiRoomLogic(
         totalEarlyLate,
         globalAdjustmentValue: globalValue,
         googleReviewsDiscount,
+        manualDiscounts,
         vatValue,
         finalTotal,
         deposit
