@@ -2,6 +2,7 @@ import { getDay, parseISO } from 'date-fns';
 import type { CalculationResult, EarlyCheckinLateCheckoutType } from '../components/types.ts';
 
 export function getEarlyLateDetails(calculation: CalculationResult, options: ReadonlySet<EarlyCheckinLateCheckoutType>, checkOut: string) {
+    if (calculation.serviceDetails) return calculation.serviceDetails;
     const lines: { label: string; amount: number }[] = [];
     const lateCheckin = options.has('checkin_2200');
     if (lateCheckin) lines.push({ label: 'Check-in từ 22:00', amount: -Math.round((calculation.nights[0]?.finalPrice ?? 0) * 0.2) });

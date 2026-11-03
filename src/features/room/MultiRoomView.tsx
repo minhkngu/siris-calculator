@@ -1,3 +1,4 @@
+import type { ServiceRule } from '../../lib/serviceRules';
 import { lazy, memo } from 'react';
 import { GlobalAdjustmentControl } from '../../components/GlobalAdjustmentControl';
 import type {
@@ -22,6 +23,7 @@ const MultiRoomSelector = lazy(loadMultiSelector);
 const MultiRoomSummary = lazy(loadMultiSummary);
 
 export interface MultiRoomViewProps {
+  serviceRules: ServiceRule[];
   promotions: StayDiscount[];
   onToggleManualPromotion: (id: string) => void;
   rooms: SelectedRoomItem[];
@@ -47,6 +49,7 @@ export interface MultiRoomViewProps {
 }
 
 function MultiRoomViewBase({
+  serviceRules,
   promotions,
   onToggleManualPromotion,
   rooms,
@@ -75,6 +78,7 @@ function MultiRoomViewBase({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
         <div className="lg:col-span-7 space-y-4">
           <MultiRoomSelector
+            serviceRules={serviceRules}
             rooms={rooms}
             branches={branches}
             roomTypes={roomTypes}

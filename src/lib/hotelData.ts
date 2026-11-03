@@ -1,7 +1,9 @@
+import type { ServiceRule } from './serviceRules';
 import { getSupabaseClient } from './supabase';
 import type { Branch, DateAdjustment, Item, RoomType, StayDiscount } from '../components/types';
 
 export interface RoomHotelData {
+  serviceRules: ServiceRule[];
   branches: Branch[];
   roomTypes: RoomType[];
   stayDiscounts: StayDiscount[];
@@ -17,14 +19,15 @@ export type HotelData = RoomHotelData | ItemsHotelData;
 const isTrue = (value: unknown) => value === true || value === 1 || String(value).toLowerCase() === 'true';
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
-const CACHE_VERSION = 4;
-const CACHE_PREFIX = 'hotel-price-calculator:data:v4:';
+const CACHE_VERSION = 7;
+const CACHE_PREFIX = 'hotel-price-calculator:data:v7:';
 
 // Actual Supabase column names. The mapper below still accepts the camelCase /
 // snake_case variants so other environments keep working.
 const COLUMNS: Record<string, string> = {
   branches: 'id,name,address',
   room_types: 'id,branchid,name,weekdayprice,weekendprice,is_hidden',
+  service_rules: 'id,code,name,description,category,amount_type,amount,calculation_base,time_from,time_to,excluded_weekdays,exclusive_group,is_active,sort_order,promotion_calcuate',
   promotions: 'id,name,description,branchid,room_type_id,minnights,stay_start,stay_end,discountamount,ispercentage,discount_basis,max_discount_per_night,max_discount_per_stay,priority,is_active,selection_mode',
   date_adjustments: 'id,date,type,amount,ispercentage,note',
   items: 'id,item_name,kind,quantity,unit_price',
@@ -88,7 +91,7 @@ export async function loadHotelData(
   try {
     const client = getSupabaseClient();
     const tables = scope === 'room'
-      ? ['branches', 'room_types', 'promotions', 'date_adjustments']
+      ? ['branches', 'room_types', 'promotions', 'date_adjustments', 'service_rules']
       : ['items'];
     const results = await Promise.all(tables.map(table => selectTable(client, table)));
     for (const result of results) {
@@ -106,6 +109,14 @@ export async function loadHotelData(
       return data;
     }
     const data: RoomHotelData = {
+      serviceRules: results[4].data!.map(r => ({
+        id: r.id, code: r.code, name: r.name, description: r.description ?? null,
+        category: r.category, amountType: r.amount_type, amount: Number(r.amount),
+        calculationBase: r.calculation_base ?? null, timeFrom: r.time_from ?? null,
+        timeTo: r.time_to ?? null, excludedWeekdays: r.excluded_weekdays ?? [],
+        exclusiveGroup: r.exclusive_group ?? null, isActive: isTrue(r.is_active),
+        sortOrder: Number(r.sort_order ?? 0), promotionCalcuate: isTrue(r.promotion_calcuate),
+      })).filter(r => r.isActive).sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code)),
       branches: results[0].data! as Branch[],
       roomTypes: results[1].data!.map(r => ({
         id: r.id, branchId: r.branch_id || r.branchId || r.branchid, name: r.name,

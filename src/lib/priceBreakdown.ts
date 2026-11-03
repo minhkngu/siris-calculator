@@ -19,11 +19,11 @@ export function getPriceBreakdown(rooms: BreakdownRoom[], adjustment: GlobalAdju
             const amount = entry.isPercentage ? Math.round(night.basePrice * entry.amount / 100) : entry.amount;
             add(entry.note || (entry.type === 'surcharge' ? 'Phụ thu theo ngày' : 'Giảm giá theo ngày'), entry.type === 'surcharge' ? amount : -amount);
         }
-        for (const entry of calculation.manualDiscounts ?? []) add(entry.promotion.name, -entry.amount);
-        if (calculation.stayDiscount) add(calculation.stayDiscount.name || 'Giảm giá lưu trú', -calculation.stayDiscountValue);
         for (const line of getEarlyLateDetails(calculation, options, checkOut)) add(line.label, line.amount);
+        if (calculation.stayDiscount) add(calculation.stayDiscount.name || 'Giảm giá lưu trú', -calculation.stayDiscountValue);
+        for (const entry of calculation.manualDiscounts ?? []) add(entry.promotion.name, -entry.amount);
     }
-    if (adjustment.googleReviews) add('Google Reviews', -Math.min(70000, Math.round(Math.max(0, rooms.reduce((s, r) => s + r.calculation.totalBase - r.calculation.stayDiscountValue + r.calculation.earlyLateTotal, 0)) * 0.1)));
+    if (adjustment.googleReviews) add('Google Reviews', -Math.min(70000, Math.round(Math.max(0, rooms.reduce((s, r) => s + r.calculation.totalBase - r.calculation.stayDiscountValue, 0)) * 0.1)));
     const subtotal = rooms.reduce((s, r) => s + r.calculation.totalBase - r.calculation.stayDiscountValue + r.calculation.earlyLateTotal, 0);
     const adjustmentBase = rooms.length === 1 && !clampBeforeVat ? rooms[0].calculation.totalBase : subtotal;
     const globalValue = adjustment.isPercentage ? Math.round(adjustmentBase * adjustment.amount / 100) : adjustment.amount;

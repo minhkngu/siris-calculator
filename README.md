@@ -75,7 +75,7 @@ npm run build
 
 ## Dữ liệu Supabase
 
-Ứng dụng đọc trực tiếp các bảng `branches`, `room_types`, `promotions`, `date_adjustments` và `items` từ Supabase. Tab phòng và tab vật dụng được tải riêng, chỉ khi cần. Cấu hình khóa công khai (anon hoặc publishable), không dùng khóa service role. Các bảng cần có quyền đọc phù hợp với chính sách RLS của dự án.
+Ứng dụng đọc trực tiếp các bảng `branches`, `room_types`, `service_rules`, `promotions`, `date_adjustments` và `items` từ Supabase. Tab phòng và tab vật dụng được tải riêng, chỉ khi cần. Cấu hình khóa công khai (anon hoặc publishable), không dùng khóa service role. Các bảng cần có quyền đọc phù hợp với chính sách RLS của dự án.
 
 Trên Vercel, thêm `VITE_SUPABASE_URL` và `VITE_SUPABASE_ANON_KEY` vào Environment Variables, sau đó build và triển khai lại. Đây là biến được đưa vào mã trình duyệt khi build.
 

@@ -1,3 +1,4 @@
+import type { ServiceRule } from '../../lib/serviceRules';
 import { memo, useCallback, useMemo } from 'react';
 import { SurchargeBanner } from '../../components/SurchargeBanner';
 import { BranchDropdown } from '../../components/BranchDropdown';
@@ -19,6 +20,7 @@ import type {
 } from '../../components/types';
 
 export interface RoomViewProps {
+  serviceRules: ServiceRule[];
   promotions: StayDiscount[];
   onToggleManualPromotion: (id: string) => void;
   branches: Branch[];
@@ -76,6 +78,7 @@ export interface RoomViewProps {
 }
 
 function RoomViewBase({
+  serviceRules,
   promotions,
   onToggleManualPromotion,
   branches,
@@ -214,6 +217,8 @@ function RoomViewBase({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
           <div className="lg:col-span-5">
             <PriceSummary
+              serviceRules={serviceRules}
+              checkIn={checkIn}
               onToggleManualPromotion={onToggleManualPromotion}
               promotions={promotions}
               calculation={calculation}

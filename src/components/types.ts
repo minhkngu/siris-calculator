@@ -1,3 +1,5 @@
+import type { ServiceRule } from '../lib/serviceRules';
+
 export interface StayDiscount {
     id: string;
     minNights: number;
@@ -47,24 +49,10 @@ export interface GlobalAdjustment {
     isPercentage: boolean;
     googleReviews?: boolean;
     selectedPromotionIds?: string[];
+    serviceRules?: readonly ServiceRule[];
 }
 
-export type EarlyCheckinLateCheckoutType =
-    | 'checkin_2200'
-    | 'early_0800'
-    | 'early_1230'
-    | 'early_1300'
-    | 'late_1300'
-    | 'late_1800';
-
-export const EARLY_LATE_OPTIONS: { type: EarlyCheckinLateCheckoutType; label: string; description: string; price: number; isPercentage: boolean; percentageRate?: number }[] = [
-    { type: 'checkin_2200', label: 'Check-in từ 22:00 — giảm 20%', description: 'Giảm 20% giá đêm nhận phòng, sau điều chỉnh theo ngày', price: 0, isPercentage: true, percentageRate: -20 },
-    { type: 'early_0800', label: 'Check-in sớm từ 8:00', description: 'Nhận phòng từ 8:00 - 12:30', price: 0, isPercentage: true, percentageRate: 50 },
-    { type: 'early_1230', label: 'Check-in sớm từ 12:30', description: 'Nhận phòng từ 12:30', price: 150000, isPercentage: false },
-    { type: 'early_1300', label: 'Check-in sớm từ 13:00', description: 'Nhận phòng từ 13:00', price: 100000, isPercentage: false },
-    { type: 'late_1300', label: 'Check-out trễ trước 13:00', description: 'Trả phòng trước 13:00', price: 100000, isPercentage: false },
-    { type: 'late_1800', label: 'Check-out trễ trước 18:00', description: 'Trả phòng trước 18:00', price: 80, isPercentage: true, percentageRate: 80 },
-];
+export type EarlyCheckinLateCheckoutType = string;
 
 export interface NightBreakdown {
     date: string;
@@ -84,6 +72,8 @@ export interface CalculationResult {
     stayDiscount: StayDiscount | undefined;
     stayDiscountValue: number;
     earlyLateTotal: number;
+    serviceDetails?: { label: string; amount: number }[];
+    promotionNightPrices?: number[];
     previousNightPrice: number;
     nextNightPrice: number;
     vatValue: number;

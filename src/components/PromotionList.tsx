@@ -1,4 +1,5 @@
 import { format, isValid, parseISO } from 'date-fns';
+import { DescriptionInfo } from './DescriptionInfo';
 import type { StayDiscount } from './types';
 
 interface Props {
@@ -28,23 +29,20 @@ export function PromotionList({ promotions, selectedIds, onToggle, applied, form
     const content = (
       <>
         <div className="flex items-start gap-2.5">
-          {isManual && <input type="checkbox" checked={checked} onChange={() => onToggle(promotion.id)} className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-emerald-700" />}
+          {isManual && <input type="checkbox" aria-label={promotion.name} onClick={event => event.stopPropagation()} checked={checked} onChange={() => onToggle(promotion.id)} className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-emerald-700" />}
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
-              <span className="min-w-0 font-semibold leading-5 text-slate-900">{promotion.name}</span>
-              <span className="w-28 shrink-0 overflow-x-auto whitespace-nowrap text-right text-xs font-bold tabular-nums text-emerald-900" aria-live="polite">
-                {selected.length > 0 ? details : ''}
-              </span>
+              <span className="flex min-w-0 items-center gap-1"><span className="font-semibold leading-5 text-slate-900">{promotion.name}</span>{promotion.description && <DescriptionInfo description={promotion.description} name={promotion.name} />}</span>
+              <span className="shrink-0 whitespace-nowrap text-right text-xs font-bold tabular-nums text-emerald-900" aria-live="polite">{selected.length > 0 ? details : ''}</span>
             </div>
-            {promotion.description && <p className="mt-0.5 break-words leading-relaxed text-slate-600">{promotion.description}</p>}
             <p className="mt-1 leading-relaxed text-slate-500">Giảm {promotion.isPercentage ? `${promotion.discountAmount}%` : formatCurrency(promotion.discountAmount)} {promotion.discountBasis === 'per_night' ? 'mỗi đêm' : 'mỗi lượt'} · Tối thiểu {promotion.minNights} đêm</p>
             {(promotion.stayStart || promotion.stayEnd) && <p className="mt-1 text-slate-500">Đêm lưu trú: {formatStayDate(promotion.stayStart)} – {formatStayDate(promotion.stayEnd)}</p>}
           </div>
         </div>
       </>
     );
-    const className = `block rounded-lg border px-3 py-2 transition-colors ${isManual ? 'cursor-pointer hover:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-1 ' : ''}${selected.length ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`;
-    return <li key={promotion.id}>{isManual ? <label className={className}>{content}</label> : <div className={className}>{content}</div>}</li>;
+    const className = `block h-full min-h-[68px] rounded-lg border px-3 py-2 transition-colors ${isManual ? 'cursor-pointer hover:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-1 ' : ''}${selected.length ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`;
+    return <li key={promotion.id}><div className={className} onClick={isManual ? () => onToggle(promotion.id) : undefined}>{content}</div></li>;
   };
 
   return (
@@ -52,7 +50,7 @@ export function PromotionList({ promotions, selectedIds, onToggle, applied, form
       <h3 className="font-semibold text-slate-900">Khuyến mãi đang có</h3>
       {active.length === 0 ? <p className="mt-2 text-slate-500">Hiện chưa có chương trình nào.</p> : (
         <div className="mt-2">
-          <ul className="space-y-2">{[...automatic, ...manual].map(renderPromotion)}</ul>
+          <ul className="grid auto-rows-fr gap-2">{[...automatic, ...manual].map(renderPromotion)}</ul>
         </div>
       )}
     </section>

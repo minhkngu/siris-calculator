@@ -1,4 +1,4 @@
-import { ChevronDown, Plus, Minus, Check } from 'lucide-react';
+import { Plus, Minus, Check } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { AnimatedPanel } from './AnimatedPanel';
 import { cn } from '../lib/utils';
@@ -43,16 +43,14 @@ function GlobalAdjustmentControlBase({
           <button
             type="button"
             onClick={onToggleDropdown}
+            aria-expanded={showDropdown}
+            aria-label={`Loại điều chỉnh: ${isSurcharge ? 'Phụ thu' : 'Giảm giá'}`}
             className={cn(
-              "h-8 px-2.5 rounded-md text-xs font-bold transition-colors shrink-0 cursor-pointer flex items-center gap-1.5",
-              isSurcharge
-                ? "bg-amber-100 text-amber-900 hover:bg-amber-200"
-                : "bg-emerald-100 text-emerald-900 hover:bg-emerald-200"
+              "h-8 px-3 rounded-md border border-slate-700 bg-slate-800 text-xs font-bold uppercase tracking-wide text-white hover:bg-slate-700 transition-colors shrink-0 cursor-pointer flex items-center",
+              showDropdown && "bg-slate-700"
             )}
           >
-            <span className={cn("w-2 h-2 rounded-full shrink-0", isSurcharge ? "bg-amber-600" : "bg-emerald-600")} />
             <span>{isSurcharge ? 'Phụ thu' : 'Giảm giá'}</span>
-            <ChevronDown size={13} className={cn("transition-transform duration-150 ml-0.5", showDropdown && "rotate-180")} />
           </button>
 
           <AnimatePresence>
@@ -64,7 +62,7 @@ function GlobalAdjustmentControlBase({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 4 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute top-full left-0 mt-1.5 w-40 bg-white shadow-xl rounded-xl border border-slate-200 p-1.5 z-50 overflow-hidden"
+                  className="absolute top-full left-0 mt-1.5 w-40 bg-white shadow-lg rounded-lg border border-slate-200 p-1 z-50 overflow-hidden"
                 >
                   <button
                     type="button"
@@ -74,18 +72,18 @@ function GlobalAdjustmentControlBase({
                     }}
                     className={cn(
                       "w-full text-left px-2.5 py-2 rounded-lg text-xs transition-colors flex items-center justify-between cursor-pointer",
-                      isSurcharge ? "bg-amber-50 text-amber-900 font-bold" : "text-slate-700 hover:bg-slate-50"
+                      isSurcharge ? "bg-slate-100 text-slate-900" : "text-slate-700 hover:bg-slate-50"
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                      <div className="w-5 h-5 text-slate-500 flex items-center justify-center shrink-0">
                         <Plus size={12} strokeWidth={2.5} />
                       </div>
                       <div>
-                        <div className="font-semibold">Phụ thu (+)</div>
+                        <div className="font-semibold">Phụ thu</div>
                       </div>
                     </div>
-                    {isSurcharge && <Check size={14} className="text-amber-700 shrink-0" strokeWidth={2.5} />}
+                    {isSurcharge && <Check size={14} className="text-slate-700 shrink-0" strokeWidth={2.5} />}
                   </button>
 
                   <button
@@ -96,18 +94,18 @@ function GlobalAdjustmentControlBase({
                     }}
                     className={cn(
                       "w-full text-left px-2.5 py-2 rounded-lg text-xs transition-colors flex items-center justify-between cursor-pointer mt-0.5",
-                      !isSurcharge ? "bg-emerald-50 text-emerald-900 font-bold" : "text-slate-700 hover:bg-slate-50"
+                      !isSurcharge ? "bg-slate-100 text-slate-900" : "text-slate-700 hover:bg-slate-50"
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <div className="w-5 h-5 text-slate-500 flex items-center justify-center shrink-0">
                         <Minus size={12} strokeWidth={2.5} />
                       </div>
                       <div>
-                        <div className="font-semibold">Giảm giá (−)</div>
+                        <div className="font-semibold">Giảm giá</div>
                       </div>
                     </div>
-                    {!isSurcharge && <Check size={14} className="text-emerald-700 shrink-0" strokeWidth={2.5} />}
+                    {!isSurcharge && <Check size={14} className="text-slate-700 shrink-0" strokeWidth={2.5} />}
                   </button>
                 </AnimatedPanel>
               </>
@@ -151,7 +149,7 @@ function GlobalAdjustmentControlBase({
             className={cn(
               "w-12 h-8 rounded text-sm font-bold transition-colors cursor-pointer",
               globalAdjustment.isPercentage
-                ? "bg-brand-700 text-white shadow-xs"
+                ? "bg-white text-slate-900 shadow-sm"
                 : "text-slate-500 hover:text-slate-900"
             )}
           >
@@ -166,7 +164,7 @@ function GlobalAdjustmentControlBase({
             className={cn(
               "w-12 h-8 rounded text-sm font-bold transition-colors cursor-pointer",
               !globalAdjustment.isPercentage
-                ? "bg-brand-700 text-white shadow-xs"
+                ? "bg-white text-slate-900 shadow-sm"
                 : "text-slate-500 hover:text-slate-900"
             )}
           >

@@ -1,3 +1,4 @@
+import { allocateServiceCharge, normalizeServiceSelection, serviceAmount } from './serviceRules.ts';
 import { format, addDays, getDay, eachDayOfInterval, parseISO, isValid } from 'date-fns';
 import type { RoomType, DateAdjustment, GlobalAdjustment, StayDiscount, EarlyCheckinLateCheckoutType, CalculationResult, SelectedRoomItem, MultiRoomCalculationItem, MultiRoomTotalSummary } from '../components/types.ts';
 
@@ -41,11 +42,11 @@ function roomCacheKey(
     return [
         room.id, room.branchId, room.weekdayPrice, room.weekendPrice, checkIn, checkOut,
         globalAdjustment.type, globalAdjustment.amount, globalAdjustment.isPercentage ? 1 : 0,
-        globalAdjustment.googleReviews ? 1 : 0, [...(globalAdjustment.selectedPromotionIds ?? [])].sort().join(','), includeVAT ? 1 : 0, vatRate, options,
+        globalAdjustment.googleReviews ? 1 : 0, [...(globalAdjustment.selectedPromotionIds ?? [])].sort().join(','), includeVAT ? 1 : 0, vatRate, options, JSON.stringify(globalAdjustment.serviceRules ?? null),
     ].join('|');
 }
 
-type ManualRoom = { room: RoomType; nights: CalculationResult['nights']; subtotal: number };
+type ManualRoom = { room: RoomType; nights: CalculationResult['nights']; subtotal: number; promotionNightPrices?: number[] };
 
 function calculateManualDiscounts(promotions: StayDiscount[], selected: string[], rooms: ManualRoom[]) {
     const result: { promotion: StayDiscount; amount: number }[] = [];
@@ -58,10 +59,15 @@ function calculateManualDiscounts(promotions: StayDiscount[], selected: string[]
             if (item.nights.length < promotion.minNights || (promotion.branchId && promotion.branchId !== item.room.branchId) || (promotion.roomTypeId && promotion.roomTypeId !== item.room.id)) continue;
             const nights = item.nights.filter(n => (!promotion.stayStart || n.date >= promotion.stayStart) && (!promotion.stayEnd || n.date <= promotion.stayEnd));
             if (!nights.length) continue;
-            const total = item.nights.reduce((sum, n) => sum + Math.max(0, n.finalPrice), 0);
-            const ratio = total ? Math.max(0, item.subtotal) / total : 0;
-            for (const night of nights) prices.push(Math.max(0, night.finalPrice) * ratio);
-            eligibleSubtotal += nights.reduce((sum, n) => sum + Math.max(0, n.finalPrice) * ratio, 0);
+            const basePrices = item.promotionNightPrices ?? item.nights.map(n => n.finalPrice);
+            const total = basePrices.reduce((sum, price) => sum + Math.max(0, price), 0);
+            const allocations = allocateServiceCharge(Math.round(item.subtotal - total), item.nights.length);
+            for (const night of nights) {
+                const index = item.nights.indexOf(night);
+                const price = Math.max(0, basePrices[index] + (promotion.discountBasis === 'per_stay' ? allocations[index] : 0));
+                prices.push(price);
+                eligibleSubtotal += price;
+            }
         }
         if (!prices.length) continue;
         let amount = promotion.discountBasis === 'per_night'
@@ -156,6 +162,33 @@ function computeRoomCalculation(
     const breakdown = nights.map(calculateNight);
     const totalBase = breakdown.reduce((total, night) => total + night.finalPrice, 0);
 
+    // Calculate service fees before promotions.
+    const selectedServices = globalAdjustment.serviceRules
+        ? normalizeServiceSelection(earlyLateOptions, globalAdjustment.serviceRules, checkIn, checkOut)
+        : earlyLateOptions;
+    let earlyLateTotal = !globalAdjustment.serviceRules && selectedServices.has('checkin_2200') ? -Math.round(breakdown[0].finalPrice * 0.2) : 0;
+    const serviceDetails: { label: string; amount: number }[] = [];
+    let promotionEligibleServiceTotal = 0;
+    if (!globalAdjustment.serviceRules && selectedServices.has('checkin_2200')) serviceDetails.push({ label: 'Check-in từ 22:00', amount: earlyLateTotal });
+    if (globalAdjustment.serviceRules) {
+        for (const rule of globalAdjustment.serviceRules) {
+            if (!selectedServices.has(rule.code)) continue;
+            const amount = serviceAmount(rule, { previousNight: previousNightPrice, nextNight: nextNightPrice, firstNight: breakdown[0].finalPrice, subtotal: totalBase });
+            earlyLateTotal += amount;
+            if (rule.promotionCalcuate) promotionEligibleServiceTotal += amount;
+            serviceDetails.push({ label: rule.name, amount });
+        }
+    } else {
+        if (!selectedServices.has('checkin_2200') && selectedServices.has('early_0800')) earlyLateTotal += Math.round(previousNightPrice * 0.5);
+        if (!selectedServices.has('checkin_2200') && selectedServices.has('early_1230')) earlyLateTotal += 150000;
+        if (!selectedServices.has('checkin_2200') && selectedServices.has('early_1300')) earlyLateTotal += 100000;
+        if (selectedServices.has('late_1300')) earlyLateTotal += 100000;
+        if (selectedServices.has('late_1800') && ![5, 6].includes(getDay(end))) earlyLateTotal += Math.round(nextNightPrice * 0.8);
+    }
+
+    const serviceAllocations = allocateServiceCharge(promotionEligibleServiceTotal, breakdown.length);
+    const promotionNightPrices = breakdown.map((night, index) => Math.max(0, night.finalPrice + serviceAllocations[index]));
+    const promotionBase = promotionNightPrices.reduce((sum, price) => sum + price, 0);
     const nightCount = breakdown.length;
     let bestStayDiscount: StayDiscount | undefined;
     let stayDiscountValue = 0;
@@ -167,16 +200,16 @@ function computeRoomCalculation(
             (!discount.stayStart || night.date >= discount.stayStart) &&
             (!discount.stayEnd || night.date <= discount.stayEnd));
         if (!eligible.length) continue;
-        const base = eligible.reduce((sum, night) => sum + Math.max(0, night.finalPrice), 0);
+        const eligiblePrices = eligible.map(night => promotionNightPrices[breakdown.indexOf(night)]);
+        const base = eligiblePrices.reduce((sum, value) => sum + value, 0);
         let value: number;
         if (discount.discountBasis === 'per_night') {
-            value = eligible.reduce((sum, night) => {
-                const price = Math.max(0, night.finalPrice);
+            value = eligiblePrices.reduce((sum, price) => {
                 const amount = discount.isPercentage ? Math.round(price * discount.discountAmount / 100) : discount.discountAmount;
                 return sum + Math.min(price, amount, discount.maxDiscountPerNight ?? Infinity);
             }, 0);
         } else if (discount.isPercentage && discount.maxDiscountPerNight != null) {
-            value = eligible.reduce((sum, night) => sum + Math.min(Math.max(0, night.finalPrice), Math.round(Math.max(0, night.finalPrice) * discount.discountAmount / 100), discount.maxDiscountPerNight!), 0);
+            value = eligiblePrices.reduce((sum, price) => sum + Math.min(price, Math.round(price * discount.discountAmount / 100), discount.maxDiscountPerNight!), 0);
         } else {
             value = discount.isPercentage ? Math.round(base * discount.discountAmount / 100) : discount.discountAmount;
         }
@@ -189,37 +222,12 @@ function computeRoomCalculation(
 
     let finalTotal = totalBase - stayDiscountValue;
 
-    // Calculate early check-in / late check-out fees
-    const lateCheckin = earlyLateOptions.has('checkin_2200');
-    let earlyLateTotal = lateCheckin ? -Math.round(breakdown[0].finalPrice * 20 / 100) : 0;
-    if (!lateCheckin && earlyLateOptions.has('early_0800')) {
-        // 50% of price of the previous night (the night before check-in)
-        earlyLateTotal += Math.round(previousNightPrice * 50 / 100);
-    }
-    if (!lateCheckin && earlyLateOptions.has('early_1230')) {
-        earlyLateTotal += 150000;
-    }
-    if (!lateCheckin && earlyLateOptions.has('early_1300')) {
-        earlyLateTotal += 100000;
-    }
-    if (earlyLateOptions.has('late_1300')) {
-        earlyLateTotal += 100000;
-    }
-    if (earlyLateOptions.has('late_1800')) {
-        const checkoutDayOfWeek = getDay(end);
-        const isWeekendCheckout = checkoutDayOfWeek === 5 || checkoutDayOfWeek === 6;
-        if (!isWeekendCheckout) {
-            // 80% of price of the next night (the night of check-out day), not allowed on Fri/Sat
-            earlyLateTotal += Math.round(nextNightPrice * 80 / 100);
-        }
-    }
-
     finalTotal += earlyLateTotal;
 
-    const manualDiscounts = calculateManualDiscounts(stayDiscounts, globalAdjustment.selectedPromotionIds ?? [], [{ room, nights: breakdown, subtotal: finalTotal }]);
+    const manualDiscounts = calculateManualDiscounts(stayDiscounts, globalAdjustment.selectedPromotionIds ?? [], [{ room, nights: breakdown, subtotal: promotionBase - stayDiscountValue, promotionNightPrices }]);
     const manualTotal = manualDiscounts.reduce((sum, entry) => sum + entry.amount, 0);
     const googleReviewsDiscount = globalAdjustment.googleReviews
-        ? Math.min(70000, Math.round(Math.max(0, finalTotal) * 0.1)) : 0;
+        ? Math.min(70000, Math.round(Math.max(0, totalBase - stayDiscountValue) * 0.1)) : 0;
     const globalValue = globalAdjustment.isPercentage
             ? Math.round(totalBase * globalAdjustment.amount / 100)
             : globalAdjustment.amount;
@@ -243,6 +251,8 @@ function computeRoomCalculation(
         stayDiscount: bestStayDiscount,
         stayDiscountValue,
         earlyLateTotal,
+        serviceDetails: globalAdjustment.serviceRules ? serviceDetails : undefined,
+        promotionNightPrices,
         previousNightPrice,
         nextNightPrice,
         vatValue,
@@ -261,7 +271,7 @@ export function calculateMultiRoomLogic(
     includeVAT: boolean,
     vatRate: number
 ): MultiRoomTotalSummary {
-    const zeroGlobalAdj: GlobalAdjustment = { type: 'discount', amount: 0, isPercentage: false };
+    const zeroGlobalAdj: GlobalAdjustment = { type: 'discount', amount: 0, isPercentage: false, serviceRules: globalAdjustment.serviceRules };
 
     let totalBase = 0;
     let totalStayDiscounts = 0;
@@ -309,11 +319,11 @@ export function calculateMultiRoomLogic(
 
     const combinedSubtotal = totalBase - totalStayDiscounts + totalEarlyLate;
 
-    const manualDiscounts = calculateManualDiscounts(stayDiscounts, globalAdjustment.selectedPromotionIds ?? [], items.flatMap(entry => entry.item.isIncluded !== false && entry.room && entry.calculation ? [{ room: entry.room, nights: entry.calculation.nights, subtotal: entry.calculation.finalTotal }] : []));
+    const manualDiscounts = calculateManualDiscounts(stayDiscounts, globalAdjustment.selectedPromotionIds ?? [], items.flatMap(entry => entry.item.isIncluded !== false && entry.room && entry.calculation ? [{ room: entry.room, nights: entry.calculation.nights, subtotal: (entry.calculation.promotionNightPrices ?? entry.calculation.nights.map(n => n.finalPrice)).reduce((sum, price) => sum + price, 0) - entry.calculation.stayDiscountValue, promotionNightPrices: entry.calculation.promotionNightPrices }] : []));
     const manualTotal = manualDiscounts.reduce((sum, entry) => sum + entry.amount, 0);
     // Apply global adjustment on combined subtotal
     const googleReviewsDiscount = globalAdjustment.googleReviews
-        ? Math.min(70000, Math.round(Math.max(0, combinedSubtotal) * 0.1)) : 0;
+        ? Math.min(70000, Math.round(Math.max(0, totalBase - totalStayDiscounts) * 0.1)) : 0;
     const globalValue = globalAdjustment.isPercentage
         ? Math.round(combinedSubtotal * globalAdjustment.amount / 100)
         : globalAdjustment.amount;

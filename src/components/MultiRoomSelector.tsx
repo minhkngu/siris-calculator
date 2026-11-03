@@ -1,14 +1,17 @@
+import type { ServiceRule } from '../lib/serviceRules';
 import { memo, lazy, useState } from 'react';
 import { Plus, Trash2, Copy, Calendar, Clock, ChevronDown, Layers, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Branch, RoomType, SelectedRoomItem, EarlyCheckinLateCheckoutType, EARLY_LATE_OPTIONS, MultiRoomTotalSummary } from './types';
+import { EarlyLateOptions } from './EarlyLateOptions';
+import { Branch, RoomType, SelectedRoomItem, EarlyCheckinLateCheckoutType, MultiRoomTotalSummary } from './types';
 import { cn } from '../lib/utils';
-import { format, parseISO, addDays, getDay, isValid } from 'date-fns';
+import { format, parseISO, addDays } from 'date-fns';
 import { FeatureBoundary } from './FeatureBoundary';
 
 const CalendarPicker = lazy(() => import('./CalendarPicker'));
 
 interface MultiRoomSelectorProps {
+  serviceRules: ServiceRule[];
   rooms: SelectedRoomItem[];
   branches: Branch[];
   roomTypes: RoomType[];
@@ -22,6 +25,7 @@ interface MultiRoomSelectorProps {
 }
 
 function MultiRoomSelectorBase({
+  serviceRules,
   rooms,
   branches,
   roomTypes,
@@ -400,7 +404,7 @@ function MultiRoomSelectorBase({
                     )}
                   >
                     <Clock size={12} />
-                    <span>Nhận sớm / trả muộn</span>
+                    <span>Dịch vụ thêm</span>
                     {roomItem.earlyLateOptions && roomItem.earlyLateOptions.size > 0 && (
                       <span className="w-4 h-4 rounded-full bg-white text-slate-900 text-[10px] flex items-center justify-center font-bold">
                         {roomItem.earlyLateOptions.size}
@@ -438,82 +442,7 @@ function MultiRoomSelectorBase({
                     exit={{ height: 0, opacity: 0 }}
                     className="overflow-hidden mt-2 pt-2 border-t border-slate-100"
                   >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 p-2 bg-slate-50 rounded-lg">
-                      {EARLY_LATE_OPTIONS.map((option) => {
-                        const checkOutDate = roomItem.checkOut ? parseISO(roomItem.checkOut) : null;
-                        const isWeekendCheckout =
-                          checkOutDate && isValid(checkOutDate)
-                            ? getDay(checkOutDate) === 5 || getDay(checkOutDate) === 6
-                            : false;
-                        const isLate1800Disabled = option.type === 'late_1800' && isWeekendCheckout;
-                        const isSelected =
-                          !isLate1800Disabled &&
-                          Boolean(roomItem.earlyLateOptions && roomItem.earlyLateOptions.has(option.type));
-
-                        let displayPrice = '';
-                        if (option.type === 'checkin_2200') {
-                          displayPrice = formatCurrency(
-                            Math.round(((itemCalc?.nights[0]?.finalPrice || 0) * 20) / 100)
-                          );
-                        } else if (option.type === 'early_0800') {
-                          const basePrice = itemCalc?.previousNightPrice || currentRoom?.weekdayPrice || 0;
-                          const value = Math.round((basePrice * (option.percentageRate || 50)) / 100);
-                          displayPrice = formatCurrency(value);
-                        } else if (option.type === 'late_1800') {
-                          const basePrice = itemCalc?.nextNightPrice || currentRoom?.weekdayPrice || 0;
-                          const value = Math.round((basePrice * (option.percentageRate || 80)) / 100);
-                          displayPrice = formatCurrency(value);
-                        } else {
-                          displayPrice = formatCurrency(option.price || 0);
-                        }
-
-                        return (
-                          <div
-                            key={option.type}
-                            onClick={() => {
-                              if (!isLate1800Disabled) {
-                                onToggleEarlyLate(index, option.type);
-                              }
-                            }}
-                            className={cn(
-                              "p-2 rounded-md border text-xs transition-colors flex items-center justify-between select-none",
-                              isLate1800Disabled
-                                ? "bg-slate-100/70 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
-                                : isSelected
-                                  ? "bg-brand-700 border-brand-700 text-white cursor-pointer"
-                                  : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 cursor-pointer"
-                            )}
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <div
-                                className={cn(
-                                  "w-3.5 h-3.5 rounded flex items-center justify-center border shrink-0",
-                                  isSelected ? "bg-white border-white text-slate-900" : "border-slate-300 bg-white"
-                                )}
-                              >
-                                {isSelected && <Check size={10} strokeWidth={3} />}
-                              </div>
-                              <span className={cn("truncate font-medium", isLate1800Disabled && "line-through")}>
-                                {option.label}
-                              </span>
-                            </div>
-
-                            <span
-                              className={cn(
-                                "text-[11px] font-bold shrink-0 ml-1 tabular-nums",
-                                isLate1800Disabled
-                                  ? "text-slate-400"
-                                  : isSelected
-                                    ? "text-white"
-                                    : "text-slate-900"
-                              )}
-                            >
-                              {isLate1800Disabled ? '—' : `${option.type === 'checkin_2200' ? '−' : '+'}${displayPrice}`}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <EarlyLateOptions serviceRules={serviceRules} checkIn={roomItem.checkIn} checkOut={roomItem.checkOut} calculation={itemCalc ?? null} selectedOptions={roomItem.earlyLateOptions} onToggle={code => onToggleEarlyLate(index, code)} formatCurrency={formatCurrency} />
                   </motion.div>
                 )}
               </AnimatePresence>

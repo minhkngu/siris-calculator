@@ -68,8 +68,9 @@ function MultiRoomSummaryBase({
     roomSummaryLines.length > 0
       ? [
           ...roomSummaryLines,
-          ...promotionDetails.map((line) => `${line.label}: − ${formatCurrency(line.amount)}`),
           ...earlyLateDetails.map((line) => `${line.label}: ${formatDetail(line.amount)}`),
+          ...promotionDetails.map((line) => `${line.label}: − ${formatCurrency(line.amount)}`),
+          ...summary.manualDiscounts.map((entry) => `${entry.promotion.name}: − ${formatCurrency(entry.amount)}`),
           `Tổng giá tất cả phòng: ${formatCurrency(summary.finalTotal)}`,
         ].join('\n')
       : '';
@@ -104,9 +105,9 @@ function MultiRoomSummaryBase({
 
     text += `TỔNG CỘNG:\n`;
     text += `• Tổng tiền phòng gốc: ${formatCurrency(summary.totalBase)}\n`;
-    for (const entry of summary.manualDiscounts) text += `• ${entry.promotion.name}: -${formatCurrency(entry.amount)}\n`;
-    for (const line of promotionDetails) text += `• ${line.label}: -${formatCurrency(line.amount)}\n`;
     for (const line of earlyLateDetails) text += `• ${line.label}: ${formatDetail(line.amount)}\n`;
+    for (const line of promotionDetails) text += `• ${line.label}: -${formatCurrency(line.amount)}\n`;
+    for (const entry of summary.manualDiscounts) text += `• ${entry.promotion.name}: -${formatCurrency(entry.amount)}\n`;
     if (globalAdjustment.amount > 0) {
       text += `• ${globalAdjustment.type === 'surcharge' ? 'Phụ thu' : 'Giảm giá'}: ${globalAdjustment.type === 'surcharge' ? '+' : '-'}${formatCurrency(summary.globalAdjustmentValue)}\n`;
     }
@@ -242,6 +243,13 @@ function MultiRoomSummaryBase({
           <span className="font-semibold text-slate-900 tabular-nums">{formatCurrency(summary.totalBase)}</span>
         </div>
 
+        {earlyLateDetails.map((line, index) => (
+          <div key={index} className="flex justify-between text-slate-700 bg-slate-50 px-2 py-1 rounded">
+            <span>{line.label}</span>
+            <span className="font-semibold tabular-nums">{formatDetail(line.amount)}</span>
+          </div>
+        ))}
+
         {summary.manualDiscounts.map(entry => (
           <div key={entry.promotion.id} className="flex justify-between text-emerald-800"><span>{entry.promotion.name}</span><span>−{formatCurrency(entry.amount)}</span></div>
         ))}
@@ -251,13 +259,6 @@ function MultiRoomSummaryBase({
             <span className="font-semibold tabular-nums">−{formatCurrency(summary.totalStayDiscounts)}</span>
           </div>
         )}
-
-        {earlyLateDetails.map((line, index) => (
-          <div key={index} className="flex justify-between text-slate-700 bg-slate-50 px-2 py-1 rounded">
-            <span>{line.label}</span>
-            <span className="font-semibold tabular-nums">{formatDetail(line.amount)}</span>
-          </div>
-        ))}
 
         {globalAdjustment.amount !== 0 && (
           <div

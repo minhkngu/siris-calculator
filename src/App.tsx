@@ -1,5 +1,6 @@
+import { normalizeServiceSelection, toggleServiceSelection, type ServiceRule } from './lib/serviceRules';
 import { lazy, useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { format, addDays, parseISO, getDay, isValid } from 'date-fns';
+import { format, addDays, parseISO, isValid } from 'date-fns';
 import { FetchErrorView } from './components/FetchErrorView';
 import { useCalculateForRoom, useComparisons, useMultiRoomCalculator } from './components/useHotelCalculator';
 import { Branch, RoomType, DateAdjustment, GlobalAdjustment, StayDiscount, EarlyCheckinLateCheckoutType, Item, SelectedRoomItem } from './components/types';
@@ -16,10 +17,6 @@ const FlyerStudio = lazy(loadFlyer);
 
 const currencyFormatter = new Intl.NumberFormat('vi-VN');
 const formatCurrency = (amount: number) => `${currencyFormatter.format(amount)} VND`;
-const EARLY_LATE_OPTION_TYPES: EarlyCheckinLateCheckoutType[] = [
-  'checkin_2200', 'early_0800', 'early_1230', 'early_1300', 'late_1300', 'late_1800',
-];
-
 interface PersistedSession {
   version: 1;
   activeTab: 'room' | 'items' | 'flyer';
@@ -56,6 +53,7 @@ function restoreMultiRooms(
   savedRooms: PersistedSession['multiRooms'] | undefined,
   branches: Branch[],
   roomTypes: RoomType[],
+  serviceRules: ServiceRule[],
   defaultCheckIn: string,
   defaultCheckOut: string,
 ): SelectedRoomItem[] {
@@ -72,12 +70,7 @@ function restoreMultiRooms(
     if (!roomId) return [];
     const checkIn = isValidStayDates(room?.checkIn, room?.checkOut) ? room.checkIn : defaultCheckIn;
     const checkOut = isValidStayDates(room?.checkIn, room?.checkOut) ? room.checkOut : defaultCheckOut;
-    const options = new Set((Array.isArray(room?.earlyLateOptions) ? room.earlyLateOptions : [])
-      .filter((option): option is EarlyCheckinLateCheckoutType => EARLY_LATE_OPTION_TYPES.includes(option)));
-    const checkoutDate = parseISO(checkOut);
-    if ((getDay(checkoutDate) === 5 || getDay(checkoutDate) === 6) && options.has('late_1800')) {
-      options.delete('late_1800');
-    }
+    const options = normalizeServiceSelection(Array.isArray(room?.earlyLateOptions) ? room.earlyLateOptions : [], serviceRules, checkIn, checkOut);
     return [{
       id: typeof room?.id === 'string' && room.id ? room.id : `room-${index + 1}`,
       branchId,
@@ -112,6 +105,7 @@ export default function App() {
 
   const [branches, setBranches] = useState<Branch[]>([]);
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
+  const [serviceRules, setServiceRules] = useState<ServiceRule[]>([]);
   const [stayDiscounts, setStayDiscounts] = useState<StayDiscount[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
@@ -244,46 +238,27 @@ export default function App() {
     });
   }, []);
 
-  const toggleEarlyLateOption = useCallback((type: EarlyCheckinLateCheckoutType) => {
-    if (type === 'late_1800') {
-      const coDate = parseISO(checkOut);
-      if (isValid(coDate) && (getDay(coDate) === 5 || getDay(coDate) === 6)) {
-        return; // Không cho phép tick checkout trễ 18:00 vào Thứ 6, Thứ 7
-      }
-    }
-    setSelectedEarlyLateOptions(prev => {
-      const next = new Set(prev);
-      if (next.has(type)) {
-        next.delete(type);
-      } else {
-        if (type === 'checkin_2200') {
-          next.delete('early_0800');
-          next.delete('early_1230');
-          next.delete('early_1300');
-        } else if (type.startsWith('early_')) {
-          next.delete('checkin_2200');
-        }
-        next.add(type);
-      }
-      return next;
-    });
-  }, [checkOut]);
+  const toggleEarlyLateOption = useCallback((code: string) => {
+    setSelectedEarlyLateOptions(prev => toggleServiceSelection(prev, code, serviceRules, checkIn, checkOut));
+  }, [serviceRules, checkIn, checkOut]);
 
-  // Tự động bỏ chọn late_1800 nếu ngày check-out rơi vào Thứ 6 hoặc Thứ 7
   useEffect(() => {
-    if (!checkOut) return;
-    const coDate = parseISO(checkOut);
-    if (isValid(coDate) && (getDay(coDate) === 5 || getDay(coDate) === 6)) {
-      setSelectedEarlyLateOptions(prev => {
-        if (prev.has('late_1800')) {
-          const next = new Set(prev);
-          next.delete('late_1800');
-          return next;
-        }
-        return prev;
+    if (!roomReady) return;
+    setSelectedEarlyLateOptions(prev => {
+      const next = normalizeServiceSelection(prev, serviceRules, checkIn, checkOut);
+      return [...prev].join('|') === [...next].join('|') ? prev : next;
+    });
+    setMultiRooms(prev => {
+      let changed = false;
+      const next = prev.map(room => {
+        const selected = normalizeServiceSelection(room.earlyLateOptions, serviceRules, room.checkIn, room.checkOut);
+        if ([...selected].join('|') === [...room.earlyLateOptions].join('|')) return room;
+        changed = true;
+        return { ...room, earlyLateOptions: selected };
       });
-    }
-  }, [checkOut]);
+      return changed ? next : prev;
+    });
+  }, [serviceRules, checkIn, checkOut, roomReady]);
 
   const fetchData = useCallback((scope: 'room' | 'items', forceRefresh = false): Promise<void> => {
     const pending = requests.current[scope];
@@ -296,12 +271,13 @@ export default function App() {
       try {
         const hotelData = await loadHotelData(scope, { forceRefresh });
         if (scope === 'room') {
-          const { branches: bData, roomTypes: rData, stayDiscounts: dData, dateAdjustments: aData } = hotelData as {
-            branches: Branch[]; roomTypes: RoomType[]; stayDiscounts: StayDiscount[]; dateAdjustments: DateAdjustment[];
+          const { branches: bData, roomTypes: rData, stayDiscounts: dData, dateAdjustments: aData, serviceRules: services } = hotelData as {
+            branches: Branch[]; roomTypes: RoomType[]; stayDiscounts: StayDiscount[]; dateAdjustments: DateAdjustment[]; serviceRules: ServiceRule[];
           };
           setBranches(bData);
           setRoomTypes(rData);
           setStayDiscounts(dData);
+          setServiceRules(services);
           setDateAdjustments(aData);
           if (bData.length > 0) {
             const restore = savedSession;
@@ -343,17 +319,9 @@ export default function App() {
             setCompareRoomIds(Array.isArray(restore?.compareRoomIds)
               ? restore.compareRoomIds.filter(id => rData.some(room => room.id === id))
               : rData.map(room => room.id));
-            const restoredOptions = new Set((Array.isArray(restore?.selectedEarlyLateOptions) ? restore.selectedEarlyLateOptions : [])
-              .filter((option): option is EarlyCheckinLateCheckoutType => EARLY_LATE_OPTION_TYPES.includes(option)));
-            const checkOutDay = getDay(parseISO(restoredCheckOut));
-            if ((checkOutDay === 5 || checkOutDay === 6) && restoredOptions.has('late_1800')) restoredOptions.delete('late_1800');
-            if (restoredOptions.has('checkin_2200')) {
-              restoredOptions.delete('early_0800');
-              restoredOptions.delete('early_1230');
-              restoredOptions.delete('early_1300');
-            }
+            const restoredOptions = normalizeServiceSelection(Array.isArray(restore?.selectedEarlyLateOptions) ? restore.selectedEarlyLateOptions : [], services, restoredCheckIn, restoredCheckOut);
             setSelectedEarlyLateOptions(restoredOptions);
-            setMultiRooms(restoreMultiRooms(restore?.multiRooms, bData, rData, defaultCheckIn, defaultCheckOut));
+            setMultiRooms(restoreMultiRooms(restore?.multiRooms, bData, rData, services, defaultCheckIn, defaultCheckOut));
           }
           setRoomReady(true);
         } else {
@@ -415,12 +383,14 @@ export default function App() {
     roomTypes.find(r => r.id === selectedRoomId)
     , [roomTypes, selectedRoomId]);
 
-  // Single room calculation
-  const calculation = useCalculateForRoom(selectedRoom, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions);
+  const calculationAdjustment = useMemo(() => ({ ...globalAdjustment, serviceRules }), [globalAdjustment, serviceRules]);
 
-  const comparisons = useComparisons(roomTypes, branches, compareBranchIds, compareRoomIds, selectedRoom, calculation, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions, activeTab === 'room' && roomMode === 'single');
+  // Single room calculation
+  const calculation = useCalculateForRoom(selectedRoom, checkIn, checkOut, dateAdjustments, calculationAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions);
+
+  const comparisons = useComparisons(roomTypes, branches, compareBranchIds, compareRoomIds, selectedRoom, calculation, checkIn, checkOut, dateAdjustments, calculationAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions, activeTab === 'room' && roomMode === 'single');
   const comparisonRoom = roomTypes.find(room => room.id === comparisonRoomId);
-  const comparisonCalculation = useCalculateForRoom(comparisonRoom, checkIn, checkOut, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions);
+  const comparisonCalculation = useCalculateForRoom(comparisonRoom, checkIn, checkOut, dateAdjustments, calculationAdjustment, stayDiscounts, includeVAT, vatRate, selectedEarlyLateOptions);
   const comparisonDifference = comparisonRoom && comparisonRoom.id !== selectedRoomId && comparisonCalculation && calculation
     ? comparisonCalculation.finalTotal - calculation.finalTotal : 0;
   const comparisonVatDifference = comparisonRoom && comparisonRoom.id !== selectedRoomId && comparisonCalculation && calculation
@@ -429,7 +399,7 @@ export default function App() {
   useEffect(() => { setComparisonRoomId(null); }, [selectedBranchId, selectedRoomId]);
 
   // Multi-room calculation
-  const multiRoomSummary = useMultiRoomCalculator(multiRooms, roomTypes, branches, dateAdjustments, globalAdjustment, stayDiscounts, includeVAT, vatRate, activeTab === 'room' && roomMode === 'multi');
+  const multiRoomSummary = useMultiRoomCalculator(multiRooms, roomTypes, branches, dateAdjustments, calculationAdjustment, stayDiscounts, includeVAT, vatRate, activeTab === 'room' && roomMode === 'multi');
 
   // Multi-room handlers
   const handleAddMultiRoom = useCallback(() => {
@@ -479,49 +449,22 @@ export default function App() {
       const current = copy[index];
       if (!current) return prev;
       const updated = { ...current, ...updates };
-      // Nếu checkOut thay đổi sang Thứ 6 hoặc Thứ 7, tự động loại bỏ late_1800
-      if (updated.checkOut && updated.earlyLateOptions?.has('late_1800')) {
-        const coDate = parseISO(updated.checkOut);
-        if (isValid(coDate) && (getDay(coDate) === 5 || getDay(coDate) === 6)) {
-          const nextSet = new Set(updated.earlyLateOptions);
-          nextSet.delete('late_1800');
-          updated.earlyLateOptions = nextSet;
-        }
-      }
+      updated.earlyLateOptions = normalizeServiceSelection(updated.earlyLateOptions, serviceRules, updated.checkIn, updated.checkOut);
       copy[index] = updated;
       return copy;
     });
-  }, []);
+  }, [serviceRules]);
 
   const handleToggleMultiEarlyLate = useCallback((index: number, type: EarlyCheckinLateCheckoutType) => {
     setMultiRooms(prev => {
       const copy = [...prev];
       const target = copy[index];
       if (!target) return prev;
-      // Không cho phép chọn late_1800 nếu ngày check-out là Thứ 6 hoặc Thứ 7
-      if (type === 'late_1800' && target.checkOut) {
-        const coDate = parseISO(target.checkOut);
-        if (isValid(coDate) && (getDay(coDate) === 5 || getDay(coDate) === 6)) {
-          return prev;
-        }
-      }
-      const nextSet = new Set(target.earlyLateOptions);
-      if (nextSet.has(type)) {
-        nextSet.delete(type);
-      } else {
-        if (type === 'checkin_2200') {
-          nextSet.delete('early_0800');
-          nextSet.delete('early_1230');
-          nextSet.delete('early_1300');
-        } else if (type.startsWith('early_')) {
-          nextSet.delete('checkin_2200');
-        }
-        nextSet.add(type);
-      }
+      const nextSet = toggleServiceSelection(target.earlyLateOptions, type, serviceRules, target.checkIn, target.checkOut);
       copy[index] = { ...target, earlyLateOptions: nextSet };
       return copy;
     });
-  }, []);
+  }, [serviceRules]);
 
   const handleToggleBranchDropdown = useCallback(() => setShowBranchDropdown((prev) => !prev), []);
   const handleSelectBranch = useCallback((branchId: string) => {
@@ -697,6 +640,7 @@ export default function App() {
             {activeTab === 'room' ? (
               roomMode === 'single' ? (
                 <RoomView
+                  serviceRules={serviceRules}
                   promotions={stayDiscounts}
                   onToggleManualPromotion={handleToggleManualPromotion}
                   branches={branches}
@@ -754,6 +698,7 @@ export default function App() {
                 />
               ) : (
                 <MultiRoomView
+                  serviceRules={serviceRules}
                   promotions={stayDiscounts}
                   onToggleManualPromotion={handleToggleManualPromotion}
                   rooms={multiRooms}

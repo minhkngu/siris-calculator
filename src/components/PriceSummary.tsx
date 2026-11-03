@@ -1,3 +1,4 @@
+import type { ServiceRule } from '../lib/serviceRules';
 import { memo, type ReactNode } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Calculator, ChevronDown } from 'lucide-react';
@@ -12,6 +13,8 @@ import { getPriceBreakdown } from '../lib/priceBreakdown';
 import { getPaymentBalance } from '../lib/paymentBalance';
 
 interface PriceSummaryProps {
+  serviceRules: ServiceRule[];
+  checkIn: string;
   promotions: StayDiscount[];
   onToggleManualPromotion: (id: string) => void;
   calculation: CalculationResult | null;
@@ -33,6 +36,8 @@ interface PriceSummaryProps {
 }
 
 function PriceSummaryBase({
+  serviceRules,
+  checkIn,
   promotions,
   onToggleManualPromotion,
   calculation,
@@ -91,17 +96,6 @@ function PriceSummaryBase({
               {calculation.nights.length} đêm
             </div>
           </div>
-
-          <PromotionList
-            promotions={promotions}
-            selectedIds={globalAdjustment.selectedPromotionIds ?? []}
-            onToggle={onToggleManualPromotion}
-            applied={(() => {
-              const selected = comparisonName ? comparisonCalculation : calculation;
-              return [...(selected?.stayDiscount ? [{ id: selected.stayDiscount.id, label: comparisonName ? `Phòng đổi: ${comparisonName}` : '', amount: selected.stayDiscountValue }] : []), ...(selected?.manualDiscounts ?? []).map(entry => ({ id: entry.promotion.id, label: '', amount: entry.amount }))];
-            })()}
-            formatCurrency={formatCurrency}
-          />
 
           {/* Room comparison notification if active */}
           {comparisonName && (
@@ -261,10 +255,11 @@ function PriceSummaryBase({
             ))}
           </div>
 
-          <div className="lg:hidden">{mobileBookingSummary}</div>
           <div className="pt-2 border-t border-slate-100">
             {/* Early / Late options */}
             <EarlyLateOptions
+              serviceRules={serviceRules}
+              checkIn={checkIn}
               selectedOptions={selectedEarlyLateOptions}
               onToggle={onToggleEarlyLateOption}
               calculation={calculation}
@@ -272,6 +267,19 @@ function PriceSummaryBase({
               checkOut={checkOut}
             />
           </div>
+
+          <PromotionList
+            promotions={promotions}
+            selectedIds={globalAdjustment.selectedPromotionIds ?? []}
+            onToggle={onToggleManualPromotion}
+            applied={(() => {
+              const selected = comparisonName ? comparisonCalculation : calculation;
+              return [...(selected?.stayDiscount ? [{ id: selected.stayDiscount.id, label: comparisonName ? `Phòng đổi: ${comparisonName}` : '', amount: selected.stayDiscountValue }] : []), ...(selected?.manualDiscounts ?? []).map(entry => ({ id: entry.promotion.id, label: '', amount: entry.amount }))];
+            })()}
+            formatCurrency={formatCurrency}
+          />
+
+          <div className="lg:hidden">{mobileBookingSummary}</div>
 
         </>
       ) : (
