@@ -35,7 +35,7 @@ export function PromotionList({ promotions, selectedIds, onToggle, applied, form
               <span className="flex min-w-0 items-center gap-1"><span className="font-semibold leading-5 text-slate-900">{promotion.name}</span>{promotion.description && <DescriptionInfo description={promotion.description} name={promotion.name} />}</span>
               <span className="shrink-0 whitespace-nowrap text-right text-xs font-bold tabular-nums text-emerald-900" aria-live="polite">{selected.length > 0 ? details : ''}</span>
             </div>
-            <p className="mt-1 leading-relaxed text-slate-500">Giảm {promotion.isPercentage ? `${promotion.discountAmount}%` : formatCurrency(promotion.discountAmount)} {promotion.discountBasis === 'per_night' ? 'mỗi đêm' : 'mỗi lượt'} · Tối thiểu {promotion.minNights} đêm</p>
+            <p className="mt-1 leading-relaxed text-slate-500">Giảm {promotion.isPercentage ? `${promotion.discountAmount}%` : formatCurrency(promotion.discountAmount)} {promotion.discountBasis === 'per_night' ? 'mỗi đêm' : 'tổng đơn'} · Tối thiểu {promotion.minNights} đêm</p>
             {(promotion.stayStart || promotion.stayEnd) && <p className="mt-1 text-slate-500">Đêm lưu trú: {formatStayDate(promotion.stayStart)} – {formatStayDate(promotion.stayEnd)}</p>}
           </div>
         </div>
